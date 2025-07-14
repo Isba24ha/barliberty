@@ -6,6 +6,7 @@ import {
   insertBarSessionSchema,
   insertTableSchema,
   insertProductSchema,
+  insertCategorySchema,
   insertCreditClientSchema,
   insertOrderSchema,
   insertOrderItemSchema,
