@@ -1,0 +1,195 @@
+Je veux un cahier de charge pour le developpement d'une application de gestion de bar avec la gestion de stock, gestion des ventes, des tables, des employés (absences). Il faut prevoirs 3 profils 
+
+- les caisses (il ya 2 shifts par jour, qui seront gerer par session matin et soir, le shifte du soir pouvant aller au dela de 00heure mais ne devra pas impacter la caisse du jour tant que la session reste ouverte. les statistique de vente par jour seront pas cumulé dans la caisse mais gardé dans l'historique. Chaque caisse aura les statistiques de ses ventes journaliéres, seul le gerant et l'administrateur auront une vue globale de tout 
+
+- Les serveurs (ils pourront prendre des commandes, creer la fiche d'un client a credit, mais ne pourront pas faire des paiements, seul les caisses pourront valider les paiements.
+
+- Le gerant ( il pourra voir les statistiques globales des entes, gerer les tables (ajouter reduire) gerer le stock mais ne pourra pas faire des ventes ni des commandes.
+
+La gestion de credit : les clients ayant une fiche pourront payer leur commandes en cash, patiellement ou a credit. Le total des credits sera dans un menu et permettra au caissier de faire les paiement a une date ulterieur totalement ou partiellent.
+
+# Cahier des Charges - Application de Gestion de Bar  
+
+## 1. Introduction  
+
+L'application a pour objectif de digitaliser la gestion d'un bar en incluant les fonctionnalités suivantes :  
+
+- Gestion des stocks  
+
+- Gestion des ventes et des commandes  
+
+- Gestion des tables  
+
+- Gestion des employés (absences, shifts)  
+
+- Gestion des crédits clients  
+
+L'application sera utilisée par trois profils distincts : Caissiers, Serveurs et Gérant/Administrateur.  
+
+---
+
+## 2. Profils Utilisateurs et Permissions  
+
+### 2.1. Caissier  
+
+- Gestion des sessions de caisse :  
+
+  - Ouverture/fermeture de session (matin/soir).  
+
+  - La session du soir peut dépasser 00h00 sans impacter la caisse du jour tant qu’elle reste ouverte.  
+
+- Gestion des paiements :  
+
+  - Validation des paiements (cash, partiel, crédit).  
+
+  - Suivi des crédits clients (paiement différé).  
+
+- Statistiques :  
+
+  - Ventes journalières (uniquement pour la session en cours).  
+
+  - Historique des ventes par session.  
+
+### 2.2. Serveur  
+
+- Gestion des commandes :  
+
+  - Prise de commandes (plats, boissons).  
+
+  - Attribution des commandes aux tables.  
+
+- Gestion des clients :  
+
+  - Création de fiches clients (pour crédit).  
+
+  - Impossible de valider un paiement (rediriger vers la caisse).  
+
+### 2.3. Gérant/Administrateur  
+
+- Statistiques globales :  
+
+  - Vue consolidée des ventes (par jour, semaine, mois).  
+
+  - Analyse des performances (chiffre d’affaires, produits les plus vendus).  
+
+- Gestion du stock :  
+
+  - Ajout/modification/suppression des produits.  
+
+  - Alertes de seuil minimum.  
+
+- Gestion des tables :  
+
+  - Ajout/suppression/modification des tables.  
+
+- Gestion des employés :  
+
+  - Suivi des absences.  
+
+  - Gestion des plannings (shifts matin/soir).  
+
+---
+
+## 3. Fonctionnalités Détailées  
+
+### 3.1. Gestion des Ventes & Commandes  
+
+- Workflow d’une commande :  
+
+  1. Le serveur prend la commande et l’associe à une table.  
+
+  2. La commande est envoyée en cuisine/bar (si nécessaire).  
+
+  3. Le client peut payer en :  
+
+     - Cash (paiement immédiat via la caisse).  
+
+     - Crédit (si client enregistré, paiement différé).  
+
+     - Partiel (acompte, le reste en crédit).  
+
+- Validation des paiements : Uniquement par le caissier.  
+
+### 3.2. Gestion des Stocks  
+
+- Suivi en temps réel :  
+
+  - Déduction automatique lors des ventes.  
+
+  - Alertes de rupture de stock.  
+
+- Gestion des fournisseurs :  
+
+  - Réapprovisionnement (bon de commande).  
+
+### 3.3. Gestion des Crédits Clients  
+
+- Fiche client :  
+
+  - Nom, prénom, contact, historique des crédits.  
+
+- Paiement différé :  
+
+  - Le caissier peut régler un crédit en plusieurs fois.  
+
+  - Historique des paiements partiels.  
+
+### 3.4. Gestion des Tables  
+
+- Disposition du bar :  
+
+  - Visualisation des tables occupées/libres.  
+
+  - Capacité par table.  
+
+- Réservation possible (option future).  
+
+### 3.5. Gestion des Employés  
+
+- Shifts :  
+
+  - 2 shifts par jour (matin & soir).  
+
+  - Historique des présences/absences.  
+
+- Absences :  
+
+  - Déclaration par l’employé (avec justification si nécessaire).  
+
+  - Validation par le gérant.  
+
+---
+
+## 4. Contraintes Techniques  
+
+- Backend :  
+
+  - Base de données sécurisée (MySQL/PostgreSQL).  
+
+  - API REST pour la communication frontend/backend.  
+
+- Frontend :  
+
+  - Interface intuitive (React/Flutter selon besoin).  
+
+  - Responsive (pour tablette en salle et PC en caisse).  
+
+- Sécurité :  
+
+  - Authentification forte (rôles bien définis).  
+
+  - Chiffrement des données sensibles (clients, transactions).  
+
+---
+
+## 5. Livrables Attendus  
+
+- Application web/desktop pour la gestion (gérant & caissiers).  
+
+- Application mobile/tablette pour les serveurs.  
+
+- Tableau de bord analytique (statistiques des ventes, stocks).  
+
+- Documentation technique et utilisateur.  
+
+---
