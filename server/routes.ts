@@ -246,10 +246,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { items, ...orderData } = req.body;
       
-      // Get active session
-      const activeSession = await storage.getActiveSession(req.user.id);
+      // Get active session - check for any active session, not just user's own
+      let activeSession = await storage.getActiveSession(req.user.id);
+      
+      // If no personal session, look for any active session in the system
       if (!activeSession) {
-        return res.status(400).json({ message: "Nenhuma sessão ativa encontrada" });
+        activeSession = await storage.getAnyActiveSession();
+      }
+      
+      // If still no session and user is cashier, create one automatically
+      if (!activeSession && req.user.role === "cashier") {
+        activeSession = await storage.createSession({
+          userId: req.user.id,
+          shiftType: new Date().getHours() < 14 ? "morning" : "evening",
+        });
+      }
+      
+      if (!activeSession) {
+        return res.status(400).json({ message: "Nenhuma sessão ativa encontrada. Um caixa deve iniciar uma sessão primeiro." });
       }
 
       const order = await storage.createOrder({
