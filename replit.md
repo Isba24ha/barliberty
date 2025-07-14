@@ -232,3 +232,13 @@ The application follows a monorepo structure with shared TypeScript types and sc
 - Replaced generic "BarManager Pro" branding with official business name
 - Added logo to header navigation, login page, and sidebar components
 - Configured logo asset in public directory for proper web serving
+
+### Production Database Reset (July 2025)
+- Cleaned production database of all test transactions and test clients
+- Removed all test orders, payments, bar sessions, and absences
+- Deleted all test credit clients while preserving real user accounts
+- Reset all sequence counters to start from 1 for production
+- Set all tables to 'free' status for fresh start
+- Maintained full inventory of 220 products and 11 categories
+- Preserved 11 user accounts and 33 table configurations
+- Database now ready for live production operations
