@@ -84,7 +84,13 @@ export function OrdersPanel() {
                       <span className="text-gray-300">
                         {item.quantity}x {item.product.name}
                       </span>
-                      <span className="text-white">{formatCurrency(item.totalPrice)}</span>
+                      <div className="text-right">
+                        <span className="text-xs text-gray-400">
+                          {formatCurrency(item.unitPrice)} cada
+                        </span>
+                        <br />
+                        <span className="text-white">{formatCurrency(item.totalPrice)}</span>
+                      </div>
                     </div>
                   ))}
                 </div>

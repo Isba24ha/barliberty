@@ -111,6 +111,28 @@ export default function Orders() {
     },
   });
 
+  const addItemsToOrderMutation = useMutation({
+    mutationFn: async ({ orderId, items }: { orderId: number; items: any[] }) => {
+      return apiRequest("POST", `/api/orders/${orderId}/items`, { items });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tables"] });
+      toast({
+        title: "Sucesso",
+        description: "Itens adicionados ao pedido com sucesso!",
+      });
+      resetOrder();
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro",
+        description: "Falha ao adicionar itens ao pedido",
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetOrder = () => {
     setOrderStep({
       step: 'table',
@@ -124,15 +146,30 @@ export default function Orders() {
   };
 
   const handleTableSelection = (table: Table) => {
-    if (table.status !== 'free') {
-      toast({
-        title: "Mesa ocupada",
-        description: "Esta mesa não está disponível",
-        variant: "destructive",
-      });
-      return;
+    // Check if table is occupied and has an existing order
+    if (table.status === 'occupied' && table.currentOrderId) {
+      // Find the existing order for this table
+      const existingOrder = orders.find(order => order.id === table.currentOrderId);
+      if (existingOrder) {
+        // Pre-populate the form with existing order data
+        setOrderStep(prev => ({
+          ...prev,
+          selectedTable: table,
+          clientType: existingOrder.creditClientId ? 'credit' : 'anonymous',
+          selectedClient: existingOrder.creditClientId ? creditClients.find(c => c.id === existingOrder.creditClientId) || null : null,
+          anonymousName: existingOrder.customerName || '',
+          orderItems: existingOrder.items.map(item => ({
+            product: item.product,
+            quantity: item.quantity
+          })),
+          notes: existingOrder.notes || '',
+          step: 'products'
+        }));
+        return;
+      }
     }
 
+    // For free tables, start normal process
     setOrderStep(prev => ({
       ...prev,
       selectedTable: table,
@@ -210,20 +247,50 @@ export default function Orders() {
       return;
     }
 
-    const orderData = {
-      tableId: orderStep.selectedTable.id,
-      creditClientId: orderStep.clientType === 'credit' ? orderStep.selectedClient?.id : null,
-      customerName: orderStep.clientType === 'anonymous' ? orderStep.anonymousName : null,
-      totalAmount: calculateTotal(),
-      notes: orderStep.notes,
-      items: orderStep.orderItems.map(item => ({
-        productId: item.product.id,
-        quantity: item.quantity,
-        price: item.product.price
-      }))
-    };
+    // Check if this table has an existing order
+    const existingOrder = orders.find(order => order.id === orderStep.selectedTable?.currentOrderId);
+    
+    if (existingOrder) {
+      // Find new items (not in existing order)
+      const existingProductIds = existingOrder.items.map(item => item.product.id);
+      const newItems = orderStep.orderItems.filter(item => !existingProductIds.includes(item.product.id));
+      
+      if (newItems.length > 0) {
+        // Add new items to existing order
+        const itemsToAdd = newItems.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          price: item.product.price
+        }));
+        
+        addItemsToOrderMutation.mutate({ 
+          orderId: existingOrder.id, 
+          items: itemsToAdd 
+        });
+      } else {
+        toast({
+          title: "Aviso",
+          description: "Nenhum item novo para adicionar",
+          variant: "default",
+        });
+      }
+    } else {
+      // Create new order
+      const orderData = {
+        tableId: orderStep.selectedTable.id,
+        creditClientId: orderStep.clientType === 'credit' ? orderStep.selectedClient?.id : null,
+        customerName: orderStep.clientType === 'anonymous' ? orderStep.anonymousName : null,
+        totalAmount: calculateTotal(),
+        notes: orderStep.notes,
+        items: orderStep.orderItems.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          price: item.product.price
+        }))
+      };
 
-    createOrderMutation.mutate(orderData);
+      createOrderMutation.mutate(orderData);
+    }
   };
 
   const getLocationName = (location: string) => {
