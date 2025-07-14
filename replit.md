@@ -249,6 +249,9 @@ The application follows a monorepo structure with shared TypeScript types and sc
 - Enhanced useAuth hook with refetchOnWindowFocus and refetchOnMount
 - Login now redirects directly to dashboard without manual refresh
 - Cleared all cached queries on login to ensure fresh session state
+- Comprehensive testing confirmed: jose.barros (cashier) auth works perfectly
+- All API endpoints accessible post-login: products, categories, sessions, tables
+- React application properly serves authenticated dashboard interface
 
 ### Production Database Reset (July 2025)
 - Cleaned production database of all test transactions and test clients
