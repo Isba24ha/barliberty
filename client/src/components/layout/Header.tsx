@@ -2,9 +2,13 @@ import { useBarStore } from "@/store/useBarStore";
 import { Button } from "@/components/ui/button";
 import { Clock, LogOut, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 
 export function Header() {
   const { currentUser, activeSession, setShowSessionModal } = useBarStore();
+  const [, setLocation] = useLocation();
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
@@ -20,14 +24,31 @@ export function Header() {
   };
 
   const formatTime = (date: Date) => {
-    return new Date(date).toLocaleTimeString("fr-FR", {
+    return new Date(date).toLocaleTimeString("pt-PT", {
       hour: "2-digit",
       minute: "2-digit",
     });
   };
 
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/auth/logout", {});
+    },
+    onSuccess: () => {
+      // Clear all cached data
+      queryClient.clear();
+      // Redirect to login page
+      setLocation("/login");
+    },
+    onError: (error) => {
+      console.error("Logout error:", error);
+      // Force redirect even on error
+      setLocation("/login");
+    }
+  });
+
   const handleLogout = () => {
-    window.location.href = "/api/auth/logout";
+    logoutMutation.mutate();
   };
 
   return (
@@ -40,9 +61,9 @@ export function Header() {
           </div>
           {currentUser && (
             <div className={`px-3 py-1 rounded-full text-sm font-medium text-white ${getRoleBadgeColor(currentUser.role)}`}>
-              {currentUser.role === "cashier" && "Caissier"}
-              {currentUser.role === "server" && "Serveur"}
-              {currentUser.role === "manager" && "Gérant"}
+              {currentUser.role === "cashier" && "Caixa"}
+              {currentUser.role === "server" && "Empregado"}
+              {currentUser.role === "manager" && "Gerente"}
             </div>
           )}
         </div>
@@ -54,10 +75,10 @@ export function Header() {
               <div className="flex items-center space-x-2">
                 <Clock className="w-4 h-4 text-orange-400" />
                 <span className="text-sm text-white">
-                  Session: {activeSession.shiftType === "morning" ? "Matin" : "Soir"}
+                  Sessão: {activeSession.shiftType === "morning" ? "Manhã" : "Tarde"}
                 </span>
                 <span className="text-xs text-gray-400">
-                  {formatTime(activeSession.startTime)} - En cours
+                  {formatTime(activeSession.startTime)} - Em andamento
                 </span>
               </div>
             </div>

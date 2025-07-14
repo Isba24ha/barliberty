@@ -77,8 +77,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/auth/logout", (req, res) => {
-    (req.session as any).user = null;
-    res.json({ message: "Logout realizado com sucesso" });
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Erro ao fazer logout" });
+      }
+      res.clearCookie('connect.sid');
+      res.json({ message: "Logout realizado com sucesso" });
+    });
+  });
+
+  app.get("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Erro ao fazer logout" });
+      }
+      res.clearCookie('connect.sid');
+      res.redirect('/login');
+    });
   });
 
   // Session routes
