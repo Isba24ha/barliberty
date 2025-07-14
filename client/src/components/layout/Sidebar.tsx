@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { PT } from "@/lib/i18n";
 import { formatCurrency } from "@/lib/currency";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export function Sidebar() {
@@ -29,13 +29,14 @@ export function Sidebar() {
   const handleLogout = async () => {
     try {
       await apiRequest("POST", "/api/auth/logout");
-      setLocation("/login");
-      toast({
-        title: "Logout",
-        description: "Logout realizado com sucesso",
-      });
+      // Clear all cached data
+      queryClient.clear();
+      // Force redirect to login page with full page reload
+      window.location.href = "/login";
     } catch (error) {
       console.error("Logout error:", error);
+      // Force redirect even on error
+      window.location.href = "/login";
     }
   };
 

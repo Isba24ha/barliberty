@@ -38,13 +38,13 @@ export function Header() {
     onSuccess: () => {
       // Clear all cached data
       queryClient.clear();
-      // Redirect to login page
-      setLocation("/login");
+      // Force redirect to login page with full page reload
+      window.location.href = "/login";
     },
     onError: (error) => {
       console.error("Logout error:", error);
       // Force redirect even on error
-      setLocation("/login");
+      window.location.href = "/login";
     }
   });
 
