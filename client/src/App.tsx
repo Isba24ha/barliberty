@@ -103,7 +103,6 @@ function Router() {
         </>
       ) : (
         <>
-          <Route path="/login" component={Login} />
           <Route component={AuthenticatedApp} />
         </>
       )}

@@ -33,10 +33,8 @@ export default function Login() {
         description: "Você está agora conectado",
       });
       
-      // Short delay to ensure state is updated, then navigate
-      setTimeout(() => {
-        setLocation("/");
-      }, 100);
+      // Force navigation to dashboard
+      window.location.href = "/";
     },
     onError: (error) => {
       toast({
