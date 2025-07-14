@@ -488,16 +488,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Manager statistics routes
-  app.get("/api/manager/stats", requireAuth, async (req, res) => {
+  app.get("/api/manager/stats/daily/:date", requireAuth, async (req, res) => {
     try {
       if (req.user.role !== "manager") {
         return res.status(403).json({ message: "Accès interdit" });
       }
 
-      const { period = "daily", date = new Date().toISOString().split('T')[0] } = req.query;
+      const { date } = req.params;
       
-      // Get all sessions for the selected period
-      const sessions = await storage.getSessionsByPeriod(period as string, date as string);
+      // Get all sessions for the selected date
+      const sessions = await storage.getSessionsByPeriod("daily", date);
       
       // Calculate sales by shift
       const morningSales = sessions
@@ -526,12 +526,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         p.stock !== null && p.minStock !== null && p.stock <= p.minStock
       ).length;
 
-      // Get top products (mock data for now)
-      const topProducts = [
-        { name: "Cerveja Superbock", sales: 45, revenue: "135.00" },
-        { name: "Café Expresso", sales: 32, revenue: "48.00" },
-        { name: "Água Mineral", sales: 28, revenue: "28.00" },
-      ];
+      // Get top products from actual sales data
+      const topProducts = await storage.getTopProductsByDate(date);
 
       // Get session history
       const sessionHistory = sessions.slice(0, 10).map(s => ({
@@ -582,6 +578,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create new user (manager only)
+  app.post("/api/manager/users", requireAuth, async (req, res) => {
+    try {
+      if (req.user.role !== "manager") {
+        return res.status(403).json({ message: "Accès interdit" });
+      }
+
+      const userData = req.body;
+      const newUser = await storage.upsertUser(userData);
+      res.json(newUser);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Erreur lors de la création de l'utilisateur" });
+    }
+  });
+
   // Update user status (activate/deactivate)
   app.put("/api/manager/users/:id/status", requireAuth, async (req, res) => {
     try {
@@ -597,6 +609,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating user status:", error);
       res.status(500).json({ message: "Erreur lors de la mise à jour du statut" });
+    }
+  });
+
+  // Update user details
+  app.put("/api/manager/users/:id", requireAuth, async (req, res) => {
+    try {
+      if (req.user.role !== "manager") {
+        return res.status(403).json({ message: "Accès interdit" });
+      }
+
+      const { id } = req.params;
+      const userData = req.body;
+
+      const updatedUser = await storage.updateUserDetails(id, userData);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Erreur lors de la mise à jour de l'utilisateur" });
     }
   });
 

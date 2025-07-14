@@ -86,6 +86,12 @@ export interface IStorage {
   createAbsence(absence: InsertAbsence): Promise<Absence>;
   getAbsencesByUser(userId: string): Promise<Absence[]>;
   approveAbsence(id: number, approvedBy: string): Promise<void>;
+  
+  // Manager operations
+  getAllUsers(): Promise<User[]>;
+  updateUserStatus(id: string, isActive: boolean): Promise<void>;
+  updateUserDetails(id: string, userData: Partial<UpsertUser>): Promise<User>;
+  getTopProductsByDate(date: string): Promise<Array<{ name: string; sales: number; revenue: string }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -459,6 +465,47 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ isActive })
       .where(eq(users.id, id));
+  }
+
+  async updateUserDetails(id: string, userData: Partial<UpsertUser>): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ ...userData, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
+  async getTopProductsByDate(date: string): Promise<Array<{ name: string; sales: number; revenue: string }>> {
+    const startDate = new Date(date);
+    const endDate = new Date(date);
+    endDate.setDate(endDate.getDate() + 1);
+
+    const topProducts = await db
+      .select({
+        name: products.name,
+        sales: sql<number>`SUM(${orderItems.quantity})`,
+        revenue: sql<string>`SUM(${orderItems.quantity} * ${orderItems.price})`,
+      })
+      .from(orderItems)
+      .leftJoin(products, eq(orderItems.productId, products.id))
+      .leftJoin(orders, eq(orderItems.orderId, orders.id))
+      .where(
+        and(
+          gte(orders.createdAt, startDate),
+          lt(orders.createdAt, endDate),
+          eq(orders.status, "completed")
+        )
+      )
+      .groupBy(products.id, products.name)
+      .orderBy(sql`SUM(${orderItems.quantity} * ${orderItems.price}) DESC`)
+      .limit(5);
+
+    return topProducts.map(p => ({
+      name: p.name || "Produit inconnu",
+      sales: p.sales || 0,
+      revenue: (p.revenue || "0"),
+    }));
   }
 
   async getSessionsByPeriod(period: string, date: string): Promise<any[]> {

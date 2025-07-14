@@ -1,9 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { 
   BarChart, 
   DollarSign, 
@@ -18,11 +21,20 @@ import {
   RefreshCw,
   Download,
   Eye,
-  Clock
+  Clock,
+  Plus,
+  Edit,
+  Trash2
 } from "lucide-react";
 import { useState } from "react";
 import { formatCurrency } from "@/lib/currency";
 import { PT } from "@/lib/i18n";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { User } from "@shared/schema";
 
 interface ManagerStats {
   dailySales: {
@@ -57,12 +69,106 @@ export default function ManagerDashboard() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   const { data: managerStats, isLoading, refetch } = useQuery<ManagerStats>({
-    queryKey: ["/api/manager/stats", selectedPeriod, selectedDate],
+    queryKey: ["/api/manager/stats/daily", selectedDate],
     refetchInterval: 30000,
   });
 
-  const { data: users = [] } = useQuery({
+  const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/manager/users"],
+  });
+
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+
+  const userFormSchema = z.object({
+    id: z.string().min(1, "ID utilisateur requis"),
+    firstName: z.string().min(1, "Prénom requis"),
+    lastName: z.string().min(1, "Nom requis"),
+    email: z.string().email("Email invalide"),
+    role: z.enum(["cashier", "server", "manager"]),
+    isActive: z.boolean(),
+  });
+
+  const userForm = useForm<z.infer<typeof userFormSchema>>({
+    resolver: zodResolver(userFormSchema),
+    defaultValues: {
+      id: "",
+      firstName: "",
+      lastName: "",
+      email: "",
+      role: "cashier",
+      isActive: true,
+    },
+  });
+
+  const createUserMutation = useMutation({
+    mutationFn: async (userData: z.infer<typeof userFormSchema>) => {
+      const res = await apiRequest("POST", "/api/manager/users", userData);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/manager/users"] });
+      setShowUserModal(false);
+      userForm.reset();
+      toast({
+        title: "Succès",
+        description: "Utilisateur créé avec succès",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la création de l'utilisateur",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: async (userData: z.infer<typeof userFormSchema>) => {
+      const res = await apiRequest("PUT", `/api/manager/users/${userData.id}`, userData);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/manager/users"] });
+      setShowUserModal(false);
+      setEditingUser(null);
+      userForm.reset();
+      toast({
+        title: "Succès",
+        description: "Utilisateur mis à jour avec succès",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la mise à jour de l'utilisateur",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleUserStatusMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      const res = await apiRequest("PUT", `/api/manager/users/${id}/status`, { isActive });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/manager/users"] });
+      toast({
+        title: "Succès",
+        description: "Statut utilisateur mis à jour",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la mise à jour du statut",
+        variant: "destructive",
+      });
+    },
   });
 
   const handleRefresh = () => {
@@ -70,8 +176,61 @@ export default function ManagerDashboard() {
   };
 
   const handleExportSales = () => {
-    // Implementation for exporting sales data
-    console.log("Export sales data");
+    const csvData = managerStats?.sessionHistory?.map(session => ({
+      Date: session.date,
+      Shift: session.shift,
+      User: session.user,
+      Sales: session.sales,
+      Transactions: session.transactions,
+    }));
+    
+    if (csvData) {
+      const csvContent = "data:text/csv;charset=utf-8," + 
+        Object.keys(csvData[0]).join(",") + "\n" +
+        csvData.map(row => Object.values(row).join(",")).join("\n");
+      
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `ventes_${selectedDate}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const handleCreateUser = () => {
+    setEditingUser(null);
+    userForm.reset();
+    setShowUserModal(true);
+  };
+
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    userForm.reset({
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role as "cashier" | "server" | "manager",
+      isActive: user.isActive,
+    });
+    setShowUserModal(true);
+  };
+
+  const handleToggleUserStatus = (user: User) => {
+    toggleUserStatusMutation.mutate({
+      id: user.id,
+      isActive: !user.isActive,
+    });
+  };
+
+  const onSubmitUser = (values: z.infer<typeof userFormSchema>) => {
+    if (editingUser) {
+      updateUserMutation.mutate(values);
+    } else {
+      createUserMutation.mutate(values);
+    }
   };
 
   if (isLoading) {
@@ -282,14 +441,20 @@ export default function ManagerDashboard() {
         <TabsContent value="users" className="space-y-4">
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white flex items-center">
-                <Users className="w-5 h-5 mr-2" />
-                Gestion des utilisateurs
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-white flex items-center">
+                  <Users className="w-5 h-5 mr-2" />
+                  Gestion des utilisateurs
+                </CardTitle>
+                <Button onClick={handleCreateUser} className="bg-green-600 hover:bg-green-700">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nouveau utilisateur
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {users.map((user: any) => (
+                {users.map((user: User) => (
                   <div key={user.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
@@ -298,13 +463,31 @@ export default function ManagerDashboard() {
                       <div>
                         <p className="text-white font-medium">{user.firstName} {user.lastName}</p>
                         <p className="text-sm text-gray-400">{user.email}</p>
+                        <p className="text-xs text-gray-500">ID: {user.id}</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Badge className={user.role === "manager" ? "bg-orange-600" : user.role === "cashier" ? "bg-blue-600" : "bg-green-600"}>
-                        {user.role}
+                        {user.role === "manager" ? "Gérant" : user.role === "cashier" ? "Caissier" : "Serveur"}
                       </Badge>
-                      <Button size="sm" variant="outline" className="border-gray-600">
+                      <Badge variant={user.isActive ? "default" : "secondary"}>
+                        {user.isActive ? "Actif" : "Inactif"}
+                      </Badge>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="border-gray-600"
+                        onClick={() => handleEditUser(user)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="border-gray-600"
+                        onClick={() => handleToggleUserStatus(user)}
+                        disabled={toggleUserStatusMutation.isPending}
+                      >
                         {user.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                       </Button>
                     </div>
@@ -364,6 +547,118 @@ export default function ManagerDashboard() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* User Management Modal */}
+      <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
+        <DialogContent className="bg-gray-800 border-gray-700 text-white">
+          <DialogHeader>
+            <DialogTitle>
+              {editingUser ? "Modifier l'utilisateur" : "Créer un utilisateur"}
+            </DialogTitle>
+          </DialogHeader>
+          <Form {...userForm}>
+            <form onSubmit={userForm.handleSubmit(onSubmitUser)} className="space-y-4">
+              <FormField
+                control={userForm.control}
+                name="id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ID Utilisateur</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        className="bg-gray-700 border-gray-600"
+                        disabled={!!editingUser}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={userForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Prénom</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="bg-gray-700 border-gray-600" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={userForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nom</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="bg-gray-700 border-gray-600" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={userForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" className="bg-gray-700 border-gray-600" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={userForm.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Rôle</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="bg-gray-700 border-gray-600">
+                          <SelectValue placeholder="Sélectionner un rôle" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-gray-700 border-gray-600">
+                        <SelectItem value="cashier">Caissier</SelectItem>
+                        <SelectItem value="server">Serveur</SelectItem>
+                        <SelectItem value="manager">Gérant</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex items-center justify-end space-x-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowUserModal(false)}
+                  className="border-gray-600"
+                >
+                  Annuler
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={createUserMutation.isPending || updateUserMutation.isPending}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {editingUser ? "Modifier" : "Créer"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
