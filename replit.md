@@ -188,3 +188,13 @@ The application follows a monorepo structure with shared TypeScript types and sc
 - Different navigation menus based on user roles
 - Role-based API endpoint protection with 403 forbidden responses
 - Updated authentication middleware to enforce manager-only routes
+
+### Manager Dashboard Statistics Fix (July 2025)
+- Fixed SQL syntax error in `getTopProductsByDate` method causing statistics to show 0 F CFA
+- Added proper SQL imports and corrected column references (totalPrice instead of price)
+- Implemented comprehensive user management functionality with create/modify/block capabilities
+- Added modal interface for user creation and modification with form validation
+- Created sample data for testing statistics display (sessions, orders, credit clients)
+- Fixed manager authentication and data retrieval for real-time dashboard statistics
+- Sales statistics now properly display by shift (morning/evening) with accurate totals
+- Export functionality for daily/weekly/monthly reports with CSV download capability

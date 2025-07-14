@@ -33,7 +33,7 @@ import {
   type SessionStats,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, sum, count, sql, gte, lt } from "drizzle-orm";
+import { eq, and, desc, asc, sum, count, sql, gte, lt, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -477,35 +477,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTopProductsByDate(date: string): Promise<Array<{ name: string; sales: number; revenue: string }>> {
-    const startDate = new Date(date);
-    const endDate = new Date(date);
-    endDate.setDate(endDate.getDate() + 1);
+    try {
+      const startDate = new Date(date);
+      const endDate = new Date(date);
+      endDate.setDate(endDate.getDate() + 1);
 
-    const topProducts = await db
-      .select({
-        name: products.name,
-        sales: sql<number>`SUM(${orderItems.quantity})`,
-        revenue: sql<string>`SUM(${orderItems.quantity} * ${orderItems.price})`,
-      })
-      .from(orderItems)
-      .leftJoin(products, eq(orderItems.productId, products.id))
-      .leftJoin(orders, eq(orderItems.orderId, orders.id))
-      .where(
-        and(
-          gte(orders.createdAt, startDate),
-          lt(orders.createdAt, endDate),
-          eq(orders.status, "completed")
+      const topProducts = await db
+        .select({
+          name: products.name,
+          sales: sql<number>`SUM(${orderItems.quantity})::int`,
+          revenue: sql<string>`SUM(${orderItems.totalPrice})::text`,
+        })
+        .from(orderItems)
+        .leftJoin(products, eq(orderItems.productId, products.id))
+        .leftJoin(orders, eq(orderItems.orderId, orders.id))
+        .where(
+          and(
+            gte(orders.createdAt, startDate),
+            lt(orders.createdAt, endDate),
+            eq(orders.status, "completed")
+          )
         )
-      )
-      .groupBy(products.id, products.name)
-      .orderBy(sql`SUM(${orderItems.quantity} * ${orderItems.price}) DESC`)
-      .limit(5);
+        .groupBy(products.id, products.name)
+        .orderBy(sql`SUM(${orderItems.totalPrice}) DESC`)
+        .limit(5);
 
-    return topProducts.map(p => ({
-      name: p.name || "Produit inconnu",
-      sales: p.sales || 0,
-      revenue: (p.revenue || "0"),
-    }));
+      return topProducts.map(p => ({
+        name: p.name || "Produit inconnu",
+        sales: p.sales || 0,
+        revenue: (p.revenue || "0"),
+      }));
+    } catch (error) {
+      console.error("Error in getTopProductsByDate:", error);
+      return [];
+    }
   }
 
   async getSessionsByPeriod(period: string, date: string): Promise<any[]> {
