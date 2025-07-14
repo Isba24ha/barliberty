@@ -198,3 +198,13 @@ The application follows a monorepo structure with shared TypeScript types and sc
 - Fixed manager authentication and data retrieval for real-time dashboard statistics
 - Sales statistics now properly display by shift (morning/evening) with accurate totals
 - Export functionality for daily/weekly/monthly reports with CSV download capability
+
+### Inventory Management CRUD Operations Complete (July 2025)
+- Fixed missing PUT and DELETE API routes for products causing inventory management failures
+- Implemented soft delete functionality (isActive = false) for product removal instead of hard delete
+- Added cache-busting headers and React Query configuration for real-time inventory updates
+- Corrected field mappings between database schema and frontend (stockQuantity vs stock, minStockLevel vs minStock)
+- Fixed data type validation: price field now correctly sent as string to match decimal schema
+- Removed problematic image upload functionality that was causing validation errors
+- Product creation, modification, and deletion now fully functional with proper error handling
+- Inventory display filters only active products (isActive = true) with real-time refresh

@@ -154,7 +154,7 @@ export default function Inventory() {
       name: newProduct.name,
       description: newProduct.description || "",
       categoryId: parseInt(newProduct.categoryId),
-      price: parseFloat(newProduct.price),
+      price: newProduct.price, // Garder comme chaîne pour le schéma decimal
       stockQuantity: parseInt(newProduct.stock || "0"),
       minStockLevel: parseInt(newProduct.minStock || "0"),
       imageUrl: null, // Pour l'instant, pas de support d'image
