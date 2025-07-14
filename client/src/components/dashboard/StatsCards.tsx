@@ -1,39 +1,41 @@
 import { useBarStore } from "@/store/useBarStore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Euro, Receipt, FileText, Table } from "lucide-react";
+import { PT } from "@/lib/i18n";
+import { formatCurrency } from "@/lib/currency";
 
 export function StatsCards() {
   const { sessionStats } = useBarStore();
 
   const stats = [
     {
-      title: "Ventes Session",
-      value: `€${sessionStats?.totalSales || "0.00"}`,
-      change: "+15.2% vs hier",
+      title: PT.dashboard.todaySales,
+      value: formatCurrency(sessionStats?.totalSales || "0"),
+      change: "+15.2% vs ontem",
       icon: Euro,
       color: "text-green-400",
       bgColor: "bg-green-500 bg-opacity-20",
     },
     {
-      title: "Transactions",
+      title: PT.dashboard.totalTransactions,
       value: sessionStats?.transactionCount || 0,
-      change: "3 en attente",
+      change: "3 pendentes",
       icon: Receipt,
       color: "text-blue-400",
       bgColor: "bg-blue-500 bg-opacity-20",
     },
     {
-      title: "Crédits Actifs",
-      value: `€${sessionStats?.activeCredits || "0.00"}`,
-      change: "2 clients",
+      title: PT.dashboard.activeCredits,
+      value: formatCurrency(sessionStats?.activeCredits || "0"),
+      change: "2 clientes",
       icon: FileText,
       color: "text-orange-400",
       bgColor: "bg-orange-500 bg-opacity-20",
     },
     {
-      title: "Tables Occupées",
+      title: PT.dashboard.occupiedTables,
       value: `${sessionStats?.occupiedTables || 0}/${sessionStats?.totalTables || 0}`,
-      change: `${Math.round(((sessionStats?.occupiedTables || 0) / (sessionStats?.totalTables || 1)) * 100)}% occupation`,
+      change: `${Math.round(((sessionStats?.occupiedTables || 0) / (sessionStats?.totalTables || 1)) * 100)}% ocupação`,
       icon: Table,
       color: "text-purple-400",
       bgColor: "bg-purple-500 bg-opacity-20",

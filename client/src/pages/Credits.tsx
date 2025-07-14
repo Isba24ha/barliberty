@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { CreditClient } from "@shared/schema";
 import { Plus, Search, Euro, Calendar, User } from "lucide-react";
 import { useState } from "react";
+import { PT } from "@/lib/i18n";
+import { formatCurrency } from "@/lib/currency";
 
 export default function Credits() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -24,13 +26,13 @@ export default function Credits() {
   const activeClients = creditClients.filter(client => client.isActive && parseFloat(client.totalCredit) > 0);
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("fr-FR");
+    return new Date(date).toLocaleDateString("pt-PT");
   };
 
   if (isLoading) {
     return (
       <div className="p-6">
-        <h2 className="text-2xl font-bold text-white mb-6">Crédits Clients</h2>
+        <h2 className="text-2xl font-bold text-white mb-6">{PT.credits.title}</h2>
         <div className="space-y-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i} className="bg-gray-800 border-gray-700">
@@ -50,10 +52,10 @@ export default function Credits() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-white">Crédits Clients</h2>
+        <h2 className="text-2xl font-bold text-white">{PT.credits.title}</h2>
         <Button className="bg-orange-500 hover:bg-orange-600 text-white">
           <Plus className="w-4 h-4 mr-2" />
-          Nouveau Client
+          Novo Cliente
         </Button>
       </div>
 
@@ -63,8 +65,8 @@ export default function Credits() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Total Crédits</p>
-                <p className="text-2xl font-bold text-orange-400">€{totalCredit.toFixed(2)}</p>
+                <p className="text-sm text-gray-400">Total Créditos</p>
+                <p className="text-2xl font-bold text-orange-400">{formatCurrency(totalCredit)}</p>
               </div>
               <div className="w-12 h-12 bg-orange-500 bg-opacity-20 rounded-full flex items-center justify-center">
                 <Euro className="w-6 h-6 text-orange-400" />
@@ -77,7 +79,7 @@ export default function Credits() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Clients Actifs</p>
+                <p className="text-sm text-gray-400">Clientes Ativos</p>
                 <p className="text-2xl font-bold text-green-400">{activeClients.length}</p>
               </div>
               <div className="w-12 h-12 bg-green-500 bg-opacity-20 rounded-full flex items-center justify-center">
@@ -91,7 +93,7 @@ export default function Credits() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Total Clients</p>
+                <p className="text-sm text-gray-400">Total Clientes</p>
                 <p className="text-2xl font-bold text-white">{creditClients.length}</p>
               </div>
               <div className="w-12 h-12 bg-blue-500 bg-opacity-20 rounded-full flex items-center justify-center">
@@ -107,7 +109,7 @@ export default function Credits() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input
-            placeholder="Rechercher un client..."
+            placeholder="Pesquisar cliente..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 bg-gray-800 border-gray-700 text-white"

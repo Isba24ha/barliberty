@@ -9,6 +9,7 @@ import { TablesOverview } from "@/components/dashboard/TablesOverview";
 import { CreditClientsTable } from "@/components/dashboard/CreditClientsTable";
 import { RefreshCw } from "lucide-react";
 import { SessionStats } from "@shared/schema";
+import { PT } from "@/lib/i18n";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -35,18 +36,18 @@ export default function Dashboard() {
       {/* Dashboard Header */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-white">
-          Tableau de Bord - {user?.role === "cashier" ? "Caissier" : user?.role === "server" ? "Serveur" : "Gérant"}
+          {PT.dashboard.title} - {user?.role === "cashier" ? PT.roles.cashier : user?.role === "server" ? PT.roles.server : PT.roles.manager}
         </h2>
         <div className="flex items-center space-x-4">
           <div className="text-sm text-gray-400">
-            Dernière mise à jour: {new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+            Última atualização: {new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })}
           </div>
           <Button
             onClick={handleRefresh}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
-            Actualiser
+            Atualizar
           </Button>
         </div>
       </div>

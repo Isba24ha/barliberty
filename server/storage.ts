@@ -269,8 +269,8 @@ export class DatabaseStorage implements IStorage {
             ...item.order_items,
             product: item.products!,
           })),
-          table: orderResult.tables,
-          server: orderResult.users,
+          table: orderResult.tables || undefined,
+          server: orderResult.users || undefined,
         };
       })
     );
@@ -300,8 +300,8 @@ export class DatabaseStorage implements IStorage {
         ...item.order_items,
         product: item.products!,
       })),
-      table: orderResult.tables,
-      server: orderResult.users,
+      table: orderResult.tables || undefined,
+      server: orderResult.users || undefined,
     };
   }
 
@@ -329,8 +329,8 @@ export class DatabaseStorage implements IStorage {
             ...item.order_items,
             product: item.products!,
           })),
-          table: orderResult.tables,
-          server: orderResult.users,
+          table: orderResult.tables || undefined,
+          server: orderResult.users || undefined,
         };
       })
     );

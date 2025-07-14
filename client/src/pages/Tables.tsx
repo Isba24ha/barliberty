@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table } from "@shared/schema";
 import { Plus, Users, Clock } from "lucide-react";
+import { PT } from "@/lib/i18n";
 
 export default function Tables() {
   const { data: tables = [], isLoading } = useQuery<Table[]>({
@@ -27,11 +28,11 @@ export default function Tables() {
   const getStatusText = (status: string) => {
     switch (status) {
       case "occupied":
-        return "Occupée";
+        return PT.tables.occupied;
       case "free":
-        return "Libre";
+        return PT.tables.free;
       case "reserved":
-        return "Réservée";
+        return PT.tables.reserved;
       default:
         return status;
     }
@@ -44,7 +45,7 @@ export default function Tables() {
   if (isLoading) {
     return (
       <div className="p-6">
-        <h2 className="text-2xl font-bold text-white mb-6">Tables</h2>
+        <h2 className="text-2xl font-bold text-white mb-6">{PT.tables.title}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <Card key={i} className="bg-gray-800 border-gray-700">

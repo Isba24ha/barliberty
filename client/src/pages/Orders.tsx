@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OrderWithItems } from "@shared/schema";
 import { Clock, User, Table as TableIcon } from "lucide-react";
+import { PT } from "@/lib/i18n";
+import { formatCurrency } from "@/lib/currency";
 
 export default function Orders() {
   const { data: orders = [], isLoading } = useQuery<OrderWithItems[]>({
@@ -31,15 +33,15 @@ export default function Orders() {
   const getStatusText = (status: string) => {
     switch (status) {
       case "pending":
-        return "En attente";
+        return PT.orders.pending;
       case "preparing":
-        return "En préparation";
+        return PT.orders.preparing;
       case "ready":
-        return "Prêt";
+        return PT.orders.ready;
       case "completed":
-        return "Terminé";
+        return PT.orders.completed;
       case "cancelled":
-        return "Annulé";
+        return PT.orders.cancelled;
       default:
         return status;
     }
@@ -55,7 +57,7 @@ export default function Orders() {
   if (isLoading) {
     return (
       <div className="p-6">
-        <h2 className="text-2xl font-bold text-white mb-6">Commandes</h2>
+        <h2 className="text-2xl font-bold text-white mb-6">{PT.orders.title}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Card key={i} className="bg-gray-800 border-gray-700">
@@ -79,10 +81,10 @@ export default function Orders() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-white">Commandes</h2>
+        <h2 className="text-2xl font-bold text-white">{PT.orders.title}</h2>
         <div className="flex items-center space-x-4">
           <Badge variant="secondary" className="bg-gray-700">
-            {orders.length} commande{orders.length !== 1 ? "s" : ""}
+            {orders.length} pedido{orders.length !== 1 ? "s" : ""}
           </Badge>
         </div>
       </div>
@@ -90,7 +92,7 @@ export default function Orders() {
       {orders.length === 0 ? (
         <Card className="bg-gray-800 border-gray-700">
           <CardContent className="p-8 text-center">
-            <p className="text-gray-400">Aucune commande trouvée</p>
+            <p className="text-gray-400">Nenhum pedido encontrado</p>
           </CardContent>
         </Card>
       ) : (
@@ -100,7 +102,7 @@ export default function Orders() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg text-white">
-                    Commande #{order.id}
+                    {PT.orders.orderNumber} #{order.id}
                   </CardTitle>
                   <Badge className={getStatusColor(order.status)}>
                     {getStatusText(order.status)}
@@ -112,7 +114,7 @@ export default function Orders() {
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center space-x-2">
                       <TableIcon className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-300">Table {order.table?.number || "N/A"}</span>
+                      <span className="text-gray-300">Mesa {order.table?.number || "N/A"}</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Clock className="w-4 h-4 text-gray-400" />
@@ -134,18 +136,18 @@ export default function Orders() {
                           <span className="text-gray-300">
                             {item.quantity}x {item.product.name}
                           </span>
-                          <span className="text-white">€{item.totalPrice}</span>
+                          <span className="text-white">{formatCurrency(item.totalPrice)}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   <div className="border-t border-gray-600 pt-3 flex justify-between items-center">
-                    <span className="font-medium text-white">Total: €{order.totalAmount}</span>
+                    <span className="font-medium text-white">{PT.common.total}: {formatCurrency(order.totalAmount)}</span>
                     <div className="flex space-x-2">
                       {order.status === "pending" && (
                         <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                          Préparer
+                          Preparar
                         </Button>
                       )}
                       {order.status === "ready" && (

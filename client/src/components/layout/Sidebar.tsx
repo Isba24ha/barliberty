@@ -10,18 +10,20 @@ import {
   TrendingUp,
   StopCircle,
 } from "lucide-react";
+import { PT } from "@/lib/i18n";
+import { formatCurrency } from "@/lib/currency";
 
 export function Sidebar() {
   const [location] = useLocation();
   const { currentUser, activeSession, sessionStats, setShowSessionModal } = useBarStore();
 
   const navigationItems = [
-    { href: "/", icon: BarChart3, label: "Tableau de bord" },
-    { href: "/orders", icon: ShoppingCart, label: "Commandes", badge: 3 },
-    { href: "/tables", icon: Table, label: "Tables" },
-    { href: "/payments", icon: CreditCard, label: "Paiements" },
-    { href: "/credits", icon: FileText, label: "Crédits Clients", badge: 2 },
-    { href: "/stats", icon: TrendingUp, label: "Statistiques" },
+    { href: "/", icon: BarChart3, label: PT.nav.dashboard },
+    { href: "/orders", icon: ShoppingCart, label: PT.nav.orders, badge: 3 },
+    { href: "/tables", icon: Table, label: PT.nav.tables },
+    { href: "/payments", icon: CreditCard, label: "Pagamentos" },
+    { href: "/credits", icon: FileText, label: PT.nav.credits, badge: 2 },
+    { href: "/stats", icon: TrendingUp, label: "Estatísticas" },
   ];
 
   const isActive = (href: string) => {
@@ -56,23 +58,23 @@ export function Sidebar() {
       {activeSession && currentUser?.role === "cashier" && (
         <div className="px-4 mt-8">
           <div className="bg-gray-700 p-4 rounded-lg">
-            <h3 className="font-medium text-sm mb-3 text-white">Session Actuelle</h3>
+            <h3 className="font-medium text-sm mb-3 text-white">Sessão Atual</h3>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Début:</span>
+                <span className="text-gray-400">Início:</span>
                 <span className="text-white">
-                  {new Date(activeSession.startTime).toLocaleTimeString("fr-FR", {
+                  {new Date(activeSession.startTime).toLocaleTimeString("pt-PT", {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Ventes:</span>
-                <span className="text-green-400">€{sessionStats?.totalSales || "0.00"}</span>
+                <span className="text-gray-400">Vendas:</span>
+                <span className="text-green-400">{formatCurrency(sessionStats?.totalSales || "0")}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Transactions:</span>
+                <span className="text-gray-400">Transações:</span>
                 <span className="text-white">{sessionStats?.transactionCount || 0}</span>
               </div>
             </div>
@@ -82,7 +84,7 @@ export function Sidebar() {
               size="sm"
             >
               <StopCircle className="w-4 h-4 mr-2" />
-              Fermer Session
+              Fechar Sessão
             </Button>
           </div>
         </div>
