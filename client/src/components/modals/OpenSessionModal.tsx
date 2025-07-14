@@ -65,7 +65,7 @@ export function OpenSessionModal() {
 
         <div className="space-y-4">
           <p className="text-gray-300">
-            Selecione o tipo de turno para iniciar uma nova sessão de caixa.
+            Selecione o tipo de turno para iniciar uma nova sessão de caixa. A sessão permanecerá aberta até ser fechada manualmente.
           </p>
 
           <div className="space-y-2">
@@ -80,13 +80,13 @@ export function OpenSessionModal() {
                 <SelectItem value="morning" className="text-white">
                   <div className="flex items-center">
                     <Clock className="w-4 h-4 mr-2" />
-                    Manhã (06:00 - 14:00)
+                    Turno da Manhã
                   </div>
                 </SelectItem>
                 <SelectItem value="evening" className="text-white">
                   <div className="flex items-center">
                     <Clock className="w-4 h-4 mr-2" />
-                    Tarde (14:00 - 22:00)
+                    Turno da Tarde
                   </div>
                 </SelectItem>
               </SelectContent>

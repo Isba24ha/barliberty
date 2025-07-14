@@ -7,6 +7,9 @@ This is a full-stack bar management application built with React, Express, and P
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Interface language: French labels and messages preferred for UI elements.
+Session management: Sessions should remain open until manually closed (no automatic time limits).
+Printer support: EPSON thermal printer integration for receipt printing required.
 
 ## System Architecture
 
@@ -106,3 +109,37 @@ Preferred communication style: Simple, everyday language.
 - **Static Files**: Express serves built frontend from dist/public
 
 The application follows a monorepo structure with shared TypeScript types and schemas, enabling type safety across the full stack while maintaining clear separation of concerns between frontend and backend code.
+
+## Recent Changes (July 2025)
+
+### Session Management Improvements
+- Updated session modal to remove specific time constraints (morning/evening shifts without hourly limits)
+- Sessions now remain open until manually closed by cashier
+- Automatic session detection based on current time for default shift type
+
+### Order Management Enhancements
+- Fixed order item addition for existing orders (resolving "falha ao adicionar itens ao pedido")
+- Implemented proper logic to add items to pending orders at same table
+- Updated database schema: renamed `customer_name` to `client_name` in orders table
+- Added `payment_method` field to orders table for tracking payment types
+
+### Thermal Printer Integration
+- Created comprehensive thermal printer utility (`thermalPrinter.ts`)
+- Supports EPSON thermal printers with Web Serial API
+- Fallback to print dialog and text download for unsupported browsers
+- Automatic receipt printing after payment processing
+- Manual print functionality in sales history
+- Proper receipt formatting with Portuguese text
+
+### User Interface Improvements
+- Enhanced product cards with stock level indicators (green/orange/red)
+- Added new client creation modal in order process
+- Improved stock visibility for cashiers on product selection
+- Updated navigation with dedicated sales history page
+- Added comprehensive error handling and user feedback
+
+### Database Schema Updates
+- Added `address` and `notes` fields to credit_clients table
+- Updated order table column names for consistency
+- Added sample data for testing (products, tables, credit clients, users)
+- Stock tracking implementation with min/max levels

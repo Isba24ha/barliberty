@@ -159,7 +159,7 @@ export default function Orders() {
           selectedTable: table,
           clientType: existingOrder.creditClientId ? 'credit' : 'anonymous',
           selectedClient: existingOrder.creditClientId ? creditClients.find(c => c.id === existingOrder.creditClientId) || null : null,
-          anonymousName: existingOrder.customerName || '',
+          anonymousName: existingOrder.clientName || '',
           orderItems: existingOrder.items.map(item => ({
             product: item.product,
             quantity: item.quantity
@@ -286,7 +286,7 @@ export default function Orders() {
       const orderData = {
         tableId: orderStep.selectedTable.id,
         creditClientId: orderStep.clientType === 'credit' ? orderStep.selectedClient?.id : null,
-        customerName: orderStep.clientType === 'anonymous' ? orderStep.anonymousName : null,
+        clientName: orderStep.clientType === 'anonymous' ? orderStep.anonymousName : null,
         totalAmount: calculateTotal(),
         notes: orderStep.notes,
         items: orderStep.orderItems.map(item => ({
@@ -696,7 +696,7 @@ export default function Orders() {
                         Mesa {order.table?.number} - {getLocationName(order.table?.location || '')}
                       </CardTitle>
                       <p className="text-sm text-gray-400">
-                        {order.customerName || order.creditClient?.name || 'Cliente anônimo'}
+                        {order.clientName || order.creditClient?.name || 'Cliente anônimo'}
                       </p>
                     </div>
                     <Badge className={`${getStatusColor(order.status)} text-white`}>

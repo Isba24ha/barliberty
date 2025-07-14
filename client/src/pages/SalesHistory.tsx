@@ -21,13 +21,17 @@ import {
   Calendar,
   DollarSign,
   Clock,
-  User
+  User,
+  Printer
 } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
+import { thermalPrinter } from "@/lib/thermalPrinter";
+import { useToast } from "@/hooks/use-toast";
 import type { OrderWithItems } from "@shared/schema";
 
 export default function SalesHistory() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -71,6 +75,22 @@ export default function SalesHistory() {
         {labels[method as keyof typeof labels]}
       </Badge>
     );
+  };
+
+  const handlePrintReceipt = async (order: OrderWithItems) => {
+    try {
+      await thermalPrinter.printReceipt(order);
+      toast({
+        title: "Sucesso",
+        description: "Recibo enviado para impressão",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro de Impressão",
+        description: error instanceof Error ? error.message : "Erro ao imprimir recibo",
+        variant: "destructive",
+      });
+    }
   };
 
   const OrderReceiptDialog = ({ order }: { order: OrderWithItems }) => (
@@ -330,7 +350,18 @@ export default function SalesHistory() {
                   )}
                 </div>
 
-                <OrderReceiptDialog order={order} />
+                <div className="flex space-x-2">
+                  <OrderReceiptDialog order={order} />
+                  <Button
+                    onClick={() => handlePrintReceipt(order)}
+                    variant="outline"
+                    size="sm"
+                    className="border-green-600 text-green-400 hover:bg-green-600/20"
+                  >
+                    <Printer className="w-4 h-4 mr-1" />
+                    Imprimir
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))

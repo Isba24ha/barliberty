@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CreditCard, Banknote, FileText, X, Smartphone, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/currency";
+import { thermalPrinter } from "@/lib/thermalPrinter";
 import type { CreditClient } from "@shared/schema";
 
 export function PaymentModal() {
@@ -31,11 +32,26 @@ export function PaymentModal() {
     mutationFn: async (paymentData: any) => {
       return apiRequest("POST", "/api/payments", paymentData);
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
       toast({
         title: "Sucesso",
         description: "Pagamento processado com sucesso",
       });
+      
+      // Print receipt automatically after payment
+      if (selectedOrder) {
+        try {
+          await thermalPrinter.printReceipt(selectedOrder);
+          toast({
+            title: "Recibo Impresso",
+            description: "Recibo enviado para impressão",
+          });
+        } catch (error) {
+          console.error('Erro ao imprimir recibo:', error);
+          // Don't show error toast for print failure after successful payment
+        }
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tables"] });
