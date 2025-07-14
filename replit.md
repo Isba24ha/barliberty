@@ -138,6 +138,22 @@ The application follows a monorepo structure with shared TypeScript types and sc
 - Updated navigation with dedicated sales history page
 - Added comprehensive error handling and user feedback
 
+### Tables Management Enhancement (July 2025)
+- Redesigned Tables page with location-based grouping
+- Added real-time order information display on table cards
+- Implemented visual indicators: green (free), orange (pending order), red (occupied)
+- Direct order management from table cards with "Voir" and "Ajouter" buttons
+- Enhanced table status system with pending order detection
+- Added modal dialogs for viewing order details directly from tables
+- Streamlined workflow allowing order creation and item addition from tables page
+
+### Order Management Bug Fixes (July 2025)
+- Fixed quantity handling when adding items to existing orders
+- Improved logic to handle both new products and quantity increases for existing products
+- Enhanced existing order detection and item addition workflow
+- Added proper quantity difference calculation for existing products
+- Fixed dashboard sales calculation display issues
+
 ### Database Schema Updates
 - Added `address` and `notes` fields to credit_clients table
 - Updated order table column names for consistency

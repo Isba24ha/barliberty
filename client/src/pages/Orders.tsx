@@ -266,18 +266,37 @@ export default function Orders() {
     );
     
     if (existingOrder) {
-      // Find new items (not in existing order)
+      // Separate new items and quantity updates for existing items
       const existingProductIds = existingOrder.items.map(item => item.product.id);
       const newItems = orderStep.orderItems.filter(item => !existingProductIds.includes(item.product.id));
+      const updatedItems = orderStep.orderItems.filter(item => existingProductIds.includes(item.product.id));
       
-      if (newItems.length > 0) {
-        // Add new items to existing order
-        const itemsToAdd = newItems.map(item => ({
+      // Items to add (completely new products)
+      const itemsToAdd = [];
+      
+      // Add completely new items
+      for (const item of newItems) {
+        itemsToAdd.push({
           productId: item.product.id,
           quantity: item.quantity,
           price: item.product.price
-        }));
-        
+        });
+      }
+      
+      // Add additional quantities for existing products
+      for (const item of updatedItems) {
+        const existingItem = existingOrder.items.find(existing => existing.product.id === item.product.id);
+        if (existingItem && item.quantity > existingItem.quantity) {
+          // Add the difference in quantity
+          itemsToAdd.push({
+            productId: item.product.id,
+            quantity: item.quantity - existingItem.quantity,
+            price: item.product.price
+          });
+        }
+      }
+      
+      if (itemsToAdd.length > 0) {
         addItemsToOrderMutation.mutate({ 
           orderId: existingOrder.id, 
           items: itemsToAdd 
