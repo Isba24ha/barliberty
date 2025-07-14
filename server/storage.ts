@@ -151,6 +151,38 @@ export class DatabaseStorage implements IStorage {
       .from(barSessions)
       .where(eq(barSessions.id, sessionId));
 
+    if (!session) {
+      return {
+        totalSales: "0.00",
+        transactionCount: 0,
+        activeCredits: "0.00",
+        occupiedTables: 0,
+        totalTables: 0,
+      };
+    }
+
+    // Calculate total sales from completed orders during this session
+    const totalSalesResult = await db
+      .select({ total: sum(orders.totalAmount) })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.sessionId, sessionId),
+          eq(orders.status, "completed")
+        )
+      );
+
+    // Count transactions (completed orders) during this session
+    const transactionCountResult = await db
+      .select({ count: count() })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.sessionId, sessionId),
+          eq(orders.status, "completed")
+        )
+      );
+
     const totalTablesResult = await db.select({ count: count() }).from(tables);
     const occupiedTablesResult = await db
       .select({ count: count() })
@@ -163,8 +195,8 @@ export class DatabaseStorage implements IStorage {
       .where(eq(creditClients.isActive, true));
 
     return {
-      totalSales: session?.totalSales || "0.00",
-      transactionCount: session?.transactionCount || 0,
+      totalSales: totalSalesResult[0]?.total || "0.00",
+      transactionCount: transactionCountResult[0]?.count || 0,
       activeCredits: creditClientsResult[0]?.total || "0.00",
       occupiedTables: occupiedTablesResult[0]?.count || 0,
       totalTables: totalTablesResult[0]?.count || 0,

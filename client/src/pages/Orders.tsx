@@ -254,8 +254,11 @@ export default function Orders() {
       return;
     }
 
-    // Check if this table has an existing order
-    const existingOrder = orders.find(order => order.id === orderStep.selectedTable?.currentOrderId);
+    // Check if this table has an existing pending order
+    const existingOrder = orders.find(order => 
+      order.tableId === orderStep.selectedTable?.id && 
+      order.status === "pending"
+    );
     
     if (existingOrder) {
       // Find new items (not in existing order)
