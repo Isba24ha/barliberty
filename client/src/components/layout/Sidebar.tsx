@@ -35,8 +35,8 @@ export function Sidebar() {
       <nav className="space-y-2 px-4">
         {navigationItems.map((item) => (
           <Link key={item.href} href={item.href}>
-            <a
-              className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+            <div
+              className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors cursor-pointer ${
                 isActive(item.href)
                   ? "text-white bg-blue-600"
                   : "text-gray-300 hover:text-white hover:bg-gray-700"
@@ -49,7 +49,7 @@ export function Sidebar() {
                   {item.badge}
                 </span>
               )}
-            </a>
+            </div>
           </Link>
         ))}
       </nav>

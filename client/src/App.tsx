@@ -80,7 +80,7 @@ function Router() {
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
           <div className="text-4xl mb-4">🍺</div>
-          <div className="text-white">Chargement...</div>
+          <div className="text-white">Carregando...</div>
         </div>
       </div>
     );
@@ -89,14 +89,17 @@ function Router() {
   return (
     <Switch>
       {!isAuthenticated ? (
-        <Route path="/" component={Login} />
+        <>
+          <Route path="/" component={Login} />
+          <Route path="/login" component={Login} />
+          <Route component={NotFound} />
+        </>
       ) : (
         <>
           <Route path="/login" component={Login} />
-          <Route path="*" component={AuthenticatedApp} />
+          <Route component={AuthenticatedApp} />
         </>
       )}
-      <Route component={NotFound} />
     </Switch>
   );
 }
