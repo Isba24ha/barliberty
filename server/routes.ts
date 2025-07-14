@@ -244,15 +244,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/orders", requireAuth, requireRole(["server", "cashier"]), async (req: any, res) => {
     try {
-      const orderData = insertOrderSchema.parse({
-        ...req.body,
+      const { items, ...orderData } = req.body;
+      
+      // Get active session
+      const activeSession = await storage.getActiveSession(req.user.id);
+      if (!activeSession) {
+        return res.status(400).json({ message: "Nenhuma sessão ativa encontrada" });
+      }
+
+      const order = await storage.createOrder({
+        ...orderData,
         serverId: req.user.id,
+        sessionId: activeSession.id,
       });
-      const order = await storage.createOrder(orderData);
-      res.json(order);
+
+      // Add items to the order
+      for (const item of items) {
+        await storage.addOrderItem({
+          orderId: order.id,
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.price,
+          totalPrice: (parseFloat(item.price) * item.quantity).toFixed(2),
+        });
+      }
+
+      // Update table status
+      await storage.updateTableStatus(orderData.tableId, "occupied", order.id);
+
+      // Return the complete order with items
+      const completeOrder = await storage.getOrder(order.id);
+      res.json(completeOrder);
     } catch (error) {
       console.error("Error creating order:", error);
-      res.status(500).json({ message: "Erreur lors de la création de la commande" });
+      res.status(500).json({ message: "Erro ao criar pedido" });
     }
   });
 

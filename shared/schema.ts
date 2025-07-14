@@ -39,7 +39,10 @@ export const tableStatusEnum = pgEnum("table_status", ["free", "occupied", "rese
 export const orderStatusEnum = pgEnum("order_status", ["pending", "preparing", "ready", "completed", "cancelled"]);
 
 // Payment method enum
-export const paymentMethodEnum = pgEnum("payment_method", ["cash", "card", "credit", "partial"]);
+export const paymentMethodEnum = pgEnum("payment_method", ["cash", "mobile_money", "credit", "partial"]);
+
+// Table location enum
+export const tableLocationEnum = pgEnum("table_location", ["main_hall", "balcony", "terrace"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -70,7 +73,8 @@ export const barSessions = pgTable("bar_sessions", {
 // Tables in the bar
 export const tables = pgTable("tables", {
   id: serial("id").primaryKey(),
-  number: integer("number").notNull().unique(),
+  number: integer("number").notNull(),
+  location: tableLocationEnum("location").notNull(),
   capacity: integer("capacity").notNull(),
   status: tableStatusEnum("status").notNull().default("free"),
   currentOrderId: integer("current_order_id"),
@@ -119,6 +123,8 @@ export const orders = pgTable("orders", {
   tableId: integer("table_id").references(() => tables.id),
   serverId: varchar("server_id").references(() => users.id),
   sessionId: integer("session_id").references(() => barSessions.id),
+  creditClientId: integer("credit_client_id").references(() => creditClients.id),
+  customerName: varchar("customer_name", { length: 100 }),
   status: orderStatusEnum("status").notNull().default("pending"),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull().default("0.00"),
   notes: text("notes"),
