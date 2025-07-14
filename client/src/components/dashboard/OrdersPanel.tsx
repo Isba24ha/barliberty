@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OrderWithItems } from "@shared/schema";
+import { formatCurrency } from "@/lib/currency";
 
 export function OrdersPanel() {
   const { setSelectedOrder, setShowPaymentModal } = useBarStore();
@@ -83,12 +84,12 @@ export function OrdersPanel() {
                       <span className="text-gray-300">
                         {item.quantity}x {item.product.name}
                       </span>
-                      <span className="text-white">€{item.totalPrice}</span>
+                      <span className="text-white">{formatCurrency(item.totalPrice)}</span>
                     </div>
                   ))}
                 </div>
                 <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-600">
-                  <span className="font-medium text-white">Total: €{order.totalAmount}</span>
+                  <span className="font-medium text-white">Total: {formatCurrency(order.totalAmount)}</span>
                   <Button
                     onClick={() => handlePayment(order)}
                     className="bg-blue-600 hover:bg-blue-700 text-white"

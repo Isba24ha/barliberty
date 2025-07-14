@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
 import { CreditClient } from "@shared/schema";
+import { formatCurrency } from "@/lib/currency";
 
 export function CreditClientsTable() {
   const { data: creditClients = [], isLoading } = useQuery<CreditClient[]>({
@@ -77,7 +78,7 @@ export function CreditClientsTable() {
                       </div>
                     </td>
                     <td className="py-3">
-                      <span className="text-orange-400 font-medium">€{client.totalCredit}</span>
+                      <span className="text-orange-400 font-medium">{formatCurrency(client.totalCredit)}</span>
                     </td>
                     <td className="py-3">
                       <span className="text-gray-400">{formatDate(client.updatedAt!)}</span>

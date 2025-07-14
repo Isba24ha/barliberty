@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { CreditClient } from "@shared/schema";
-import { Plus, Search, Euro, Calendar, User } from "lucide-react";
+import { Plus, Search, DollarSign, Calendar, User } from "lucide-react";
 import { useState } from "react";
 import { PT } from "@/lib/i18n";
 import { formatCurrency } from "@/lib/currency";
@@ -69,7 +69,7 @@ export default function Credits() {
                 <p className="text-2xl font-bold text-orange-400">{formatCurrency(totalCredit)}</p>
               </div>
               <div className="w-12 h-12 bg-orange-500 bg-opacity-20 rounded-full flex items-center justify-center">
-                <Euro className="w-6 h-6 text-orange-400" />
+                <DollarSign className="w-6 h-6 text-orange-400" />
               </div>
             </div>
           </CardContent>
@@ -154,12 +154,12 @@ export default function Credits() {
                   <div className="flex items-center space-x-6">
                     <div className="text-right">
                       <p className="text-sm text-gray-400">Crédit actuel</p>
-                      <p className="text-xl font-bold text-orange-400">€{client.totalCredit}</p>
+                      <p className="text-xl font-bold text-orange-400">{formatCurrency(client.totalCredit)}</p>
                     </div>
 
                     <div className="text-right">
                       <p className="text-sm text-gray-400">Limite</p>
-                      <p className="text-sm text-white">€{client.creditLimit}</p>
+                      <p className="text-sm text-white">{formatCurrency(client.creditLimit)}</p>
                     </div>
 
                     <div className="text-right">

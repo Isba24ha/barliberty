@@ -1,6 +1,6 @@
 import { useBarStore } from "@/store/useBarStore";
 import { Card, CardContent } from "@/components/ui/card";
-import { Euro, Receipt, FileText, Table } from "lucide-react";
+import { DollarSign, Receipt, FileText, Table } from "lucide-react";
 import { PT } from "@/lib/i18n";
 import { formatCurrency } from "@/lib/currency";
 
@@ -12,7 +12,7 @@ export function StatsCards() {
       title: PT.dashboard.todaySales,
       value: formatCurrency(sessionStats?.totalSales || "0"),
       change: "+15.2% vs ontem",
-      icon: Euro,
+      icon: DollarSign,
       color: "text-green-400",
       bgColor: "bg-green-500 bg-opacity-20",
     },

@@ -295,33 +295,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/orders/:id/items", requireAuth, async (req, res) => {
+  app.post("/api/orders/:id/items", requireAuth, requireRole(["server", "cashier"]), async (req, res) => {
     try {
       const orderId = parseInt(req.params.id);
-      const itemData = insertOrderItemSchema.parse({
-        ...req.body,
-        orderId,
-      });
-      const item = await storage.addOrderItem(itemData);
-      res.json(item);
+      const { items } = req.body;
+      
+      // Check if order exists and is still pending
+      const order = await storage.getOrder(orderId);
+      if (!order) {
+        return res.status(404).json({ message: "Pedido não encontrado" });
+      }
+      
+      if (order.status !== "pending") {
+        return res.status(400).json({ message: "Não é possível adicionar itens a um pedido já pago" });
+      }
+
+      // Add each item to the order
+      const addedItems = [];
+      for (const item of items) {
+        const itemData = {
+          orderId,
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.price,
+          totalPrice: (parseFloat(item.price) * item.quantity).toFixed(2),
+        };
+        const addedItem = await storage.addOrderItem(itemData);
+        addedItems.push(addedItem);
+      }
+
+      // Update order total amount
+      const updatedOrder = await storage.getOrder(orderId);
+      if (updatedOrder) {
+        const totalAmount = updatedOrder.items.reduce((sum, item) => 
+          sum + parseFloat(item.totalPrice), 0
+        ).toFixed(2);
+        await storage.updateOrder(orderId, { totalAmount });
+      }
+
+      res.json(addedItems);
     } catch (error) {
-      console.error("Error adding order item:", error);
-      res.status(500).json({ message: "Erreur lors de l'ajout de l'article à la commande" });
+      console.error("Error adding order items:", error);
+      res.status(500).json({ message: "Erro ao adicionar itens ao pedido" });
     }
   });
 
   // Payment routes
   app.post("/api/payments", requireAuth, requireRole(["cashier"]), async (req: any, res) => {
     try {
-      const paymentData = insertPaymentSchema.parse({
-        ...req.body,
+      const { orderId, method, amount, receivedAmount, creditClientId, phoneNumber } = req.body;
+      
+      // Get active session
+      const activeSession = await storage.getActiveSession(req.user.id) || await storage.getAnyActiveSession();
+      if (!activeSession) {
+        return res.status(400).json({ message: "Nenhuma sessão ativa encontrada" });
+      }
+
+      // Calculate change amount for cash payments
+      let changeAmount = "0.00";
+      if (method === "cash" && receivedAmount) {
+        changeAmount = (parseFloat(receivedAmount) - parseFloat(amount)).toFixed(2);
+      }
+
+      const paymentData = {
+        orderId: parseInt(orderId),
+        creditClientId: creditClientId ? parseInt(creditClientId) : null,
         cashierId: req.user.id,
-      });
+        sessionId: activeSession.id,
+        method,
+        amount: amount.toString(),
+        receivedAmount: receivedAmount ? receivedAmount.toString() : null,
+        changeAmount,
+        isPartial: false,
+      };
+
       const payment = await storage.createPayment(paymentData);
+      
+      // If payment is credit, update the credit client's balance
+      if (method === "credit" && creditClientId) {
+        const creditClient = await storage.getCreditClient(parseInt(creditClientId));
+        if (creditClient) {
+          const newCreditTotal = (parseFloat(creditClient.totalCredit) + parseFloat(amount)).toFixed(2);
+          await storage.updateCreditClient(parseInt(creditClientId), { 
+            totalCredit: newCreditTotal 
+          });
+        }
+      }
+      
+      // Update order status to completed
+      await storage.updateOrder(parseInt(orderId), { status: "completed" });
+      
+      // Get the order to find the table
+      const order = await storage.getOrder(parseInt(orderId));
+      if (order && order.tableId) {
+        // Free the table
+        await storage.updateTableStatus(order.tableId, "free");
+      }
+
       res.json(payment);
     } catch (error) {
       console.error("Error creating payment:", error);
-      res.status(500).json({ message: "Erreur lors de la création du paiement" });
+      console.error("Error details:", error);
+      res.status(500).json({ message: "Erro ao processar pagamento" });
     }
   });
 

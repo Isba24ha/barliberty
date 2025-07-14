@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/currency";
 
 export function SessionModal() {
   const { activeSession, sessionStats, showSessionModal, setShowSessionModal } = useBarStore();
@@ -76,7 +77,7 @@ export function SessionModal() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Ventes totales:</span>
-                  <span className="text-green-400">€{sessionStats?.totalSales || "0.00"}</span>
+                  <span className="text-green-400">{formatCurrency(sessionStats?.totalSales || "0.00")}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Nombre de transactions:</span>
