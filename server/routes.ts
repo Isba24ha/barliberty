@@ -180,6 +180,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Product routes
   app.get("/api/products", requireAuth, async (req, res) => {
     try {
+      // Disable cache for product data to ensure fresh data after mutations
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'ETag': Date.now().toString()
+      });
+      
       const products = await storage.getAllProducts();
       res.json(products);
     } catch (error) {

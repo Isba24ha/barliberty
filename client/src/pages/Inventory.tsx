@@ -42,7 +42,9 @@ export default function Inventory() {
 
   const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
-    refetchInterval: 10000,
+    refetchInterval: 5000,
+    staleTime: 0, // Data is always stale, always refetch
+    cacheTime: 0, // Don't cache data
   });
 
   const { data: categories = [] } = useQuery<Category[]>({
@@ -59,6 +61,7 @@ export default function Inventory() {
         description: "Produit créé avec succès",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.refetchQueries({ queryKey: ["/api/products"] });
       handleCloseModal();
     },
     onError: () => {
@@ -80,6 +83,7 @@ export default function Inventory() {
         description: "Produit mis à jour avec succès",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.refetchQueries({ queryKey: ["/api/products"] });
       handleCloseModal();
     },
     onError: () => {
@@ -101,6 +105,7 @@ export default function Inventory() {
         description: "Produit supprimé avec succès",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.refetchQueries({ queryKey: ["/api/products"] });
     },
     onError: () => {
       toast({
