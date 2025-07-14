@@ -496,16 +496,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { date } = req.params;
       
-      // Get all sessions for the selected date
+      // Get all sessions for the selected date (only real sessions with actual data)
       const sessions = await storage.getSessionsByPeriod("daily", date);
       
-      // Calculate sales by shift
+      // Calculate sales by shift from real sessions data
       const morningSales = sessions
-        .filter(s => s.shiftType === "morning")
+        .filter(s => s.shiftType === "morning" && s.totalSales)
         .reduce((sum, s) => sum + parseFloat(s.totalSales || "0"), 0);
       
       const eveningSales = sessions
-        .filter(s => s.shiftType === "evening")
+        .filter(s => s.shiftType === "evening" && s.totalSales)
         .reduce((sum, s) => sum + parseFloat(s.totalSales || "0"), 0);
 
       const totalSales = morningSales + eveningSales;
@@ -545,8 +545,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           evening: eveningSales.toFixed(2),
           total: totalSales.toFixed(2),
         },
-        weeklySales: (totalSales * 7).toFixed(2), // Mock weekly calculation
-        monthlySales: (totalSales * 30).toFixed(2), // Mock monthly calculation
+        weeklySales: totalSales.toFixed(2), // Only show real daily data
+        monthlySales: totalSales.toFixed(2), // Only show real daily data
         activeCredits: activeCredits.toFixed(2),
         totalUsers: users.length,
         activeUsers,
