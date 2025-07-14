@@ -259,7 +259,7 @@ export default function Tables() {
                           <Button 
                             size="sm" 
                             className="flex-1 bg-orange-600 hover:bg-orange-700"
-                            onClick={() => window.location.href = '/orders'}
+                            onClick={() => window.location.href = `/orders?table=${table.id}`}
                           >
                             <ShoppingCart className="w-4 h-4 mr-1" />
                             Novo Pedido
@@ -323,7 +323,7 @@ export default function Tables() {
                             <Button 
                               size="sm" 
                               className="flex-1 bg-orange-600 hover:bg-orange-700"
-                              onClick={() => window.location.href = '/orders'}
+                              onClick={() => window.location.href = `/orders?table=${table.id}`}
                             >
                               <Plus className="w-4 h-4 mr-1" />
                               Ajouter

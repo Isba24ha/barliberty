@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,7 @@ interface OrderStep {
 
 export default function Orders() {
   const { toast } = useToast();
+  const search = useSearch();
   const [orderStep, setOrderStep] = useState<OrderStep>({
     step: 'table',
     selectedTable: null,
@@ -89,6 +91,25 @@ export default function Orders() {
     queryKey: ["/api/orders"],
     refetchInterval: 5000,
   });
+
+  // Auto-select table from URL parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(search);
+    const tableIdParam = urlParams.get('table');
+    
+    if (tableIdParam && tables.length > 0) {
+      const tableId = parseInt(tableIdParam);
+      const selectedTable = tables.find(t => t.id === tableId);
+      
+      if (selectedTable) {
+        setOrderStep(prev => ({
+          ...prev,
+          selectedTable,
+          step: 'client' // Skip directly to client selection
+        }));
+      }
+    }
+  }, [search, tables]);
 
   // Mutations
   const createOrderMutation = useMutation({
@@ -524,9 +545,16 @@ export default function Orders() {
               {/* Step 2: Client Selection */}
               {orderStep.step === 'client' && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-white">
-                    Selecionar Cliente - Mesa {orderStep.selectedTable?.number} ({getLocationName(orderStep.selectedTable?.location || '')})
-                  </h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-white">
+                      Selecionar Cliente - Mesa {orderStep.selectedTable?.number} ({getLocationName(orderStep.selectedTable?.location || '')})
+                    </h3>
+                    {search && (
+                      <div className="bg-green-500/20 border border-green-500 rounded-lg px-3 py-1">
+                        <span className="text-green-400 text-sm">Mesa pré-selecionada</span>
+                      </div>
+                    )}
+                  </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Anonymous Client */}
