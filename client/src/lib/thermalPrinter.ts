@@ -56,7 +56,9 @@ export class ThermalPrinter {
     const lines: string[] = [];
     
     // Header
-    lines.push(this.centerText('BarManager Pro', width));
+    lines.push(this.centerText('LIBERTY', width));
+    lines.push(this.centerText('Cafe - Bar - Lounge', width));
+    lines.push('');
     lines.push(this.centerText('Recibo de Venda', width));
     lines.push('-'.repeat(width));
     

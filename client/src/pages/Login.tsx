@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { Logo } from "@/components/Logo";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -46,9 +47,8 @@ export default function Login() {
       <Card className="w-full max-w-md bg-gray-800 border-gray-700">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
-            <div className="text-4xl">🍺</div>
+            <Logo size="md" />
           </div>
-          <CardTitle className="text-2xl font-bold text-white">BarManager Pro</CardTitle>
           <CardDescription className="text-gray-400">
             Faça login em sua conta
           </CardDescription>

@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
+import { Logo } from "@/components/Logo";
 
 export function Header() {
   const { currentUser, activeSession, setShowSessionModal } = useBarStore();
@@ -55,10 +56,7 @@ export function Header() {
     <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <div className="text-2xl">🍺</div>
-            <h1 className="text-xl font-bold text-white">BarManager Pro</h1>
-          </div>
+          <Logo size="sm" />
           {currentUser && (
             <div className={`px-3 py-1 rounded-full text-sm font-medium text-white ${getRoleBadgeColor(currentUser.role)}`}>
               {currentUser.role === "cashier" && "Caixa"}
