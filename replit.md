@@ -233,6 +233,15 @@ The application follows a monorepo structure with shared TypeScript types and sc
 - Added logo to header navigation, login page, and sidebar components
 - Configured logo asset in public directory for proper web serving
 
+### Production Database Cleanup (July 2025)
+- Removed all test transactions: payments, order_items, orders, bar_sessions, absences
+- Deleted all test credit clients to start fresh
+- Reset all sequence counters to 1 for new transactions
+- Updated all tables to 'free' status for production start
+- Maintained 220 real products and 11 users for production use
+- Cleaned orphaned references (currentOrderId) in tables
+- Confirmed authentication works: jose.barros (cashier) - Liberty@25%
+
 ### Production Database Reset (July 2025)
 - Cleaned production database of all test transactions and test clients
 - Removed all test orders, payments, bar sessions, and absences
