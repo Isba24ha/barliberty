@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,11 +22,19 @@ export default function Login() {
       return apiRequest("POST", "/api/auth/login", credentials);
     },
     onSuccess: () => {
+      // Invalidate and refetch user data to trigger immediate re-render
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      
       toast({
         title: "Login realizado com sucesso",
         description: "Você está agora conectado",
       });
-      setLocation("/");
+      
+      // Force page refresh to ensure proper state update
+      setTimeout(() => {
+        setLocation("/");
+        window.location.reload();
+      }, 500);
     },
     onError: (error) => {
       toast({
