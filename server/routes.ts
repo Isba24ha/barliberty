@@ -15,19 +15,16 @@ import {
 
 // Simple auth middleware for development
 const requireAuth = (req: any, res: any, next: any) => {
-  // For demo purposes, we'll create a mock user session
-  req.user = {
-    id: "demo-user-1",
-    role: "cashier",
-    firstName: "Marie",
-    lastName: "Dubois",
-  };
+  if (!(req.session as any)?.user) {
+    return res.status(401).json({ message: "Não autorizado" });
+  }
+  req.user = (req.session as any).user;
   next();
 };
 
 const requireRole = (roles: string[]) => (req: any, res: any, next: any) => {
   if (!req.user || !roles.includes(req.user.role)) {
-    return res.status(403).json({ message: "Accès interdit" });
+    return res.status(403).json({ message: "Acesso negado" });
   }
   next();
 };
@@ -37,15 +34,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
     const { username, password, role } = req.body;
     
-    // Simple login for demo
-    const user = await storage.upsertUser({
-      id: `user-${Date.now()}`,
-      email: username,
-      firstName: username.split('@')[0],
-      lastName: "Demo",
-      role: role || "cashier",
-    });
-
+    // Define user credentials
+    const userCredentials = {
+      // Servers
+      'rafa': { password: 'Liberty@25%', role: 'server' },
+      'filinto': { password: 'Liberty@25%', role: 'server' },
+      'junior': { password: 'Liberty@25%', role: 'server' },
+      // Cashiers
+      'jose.barros': { password: 'Liberty@25%', role: 'cashier' },
+      'milisiana': { password: 'Liberty@25%', role: 'cashier' },
+      // Managers
+      'lucelle': { password: 'Bissau@25%', role: 'manager' },
+      'carlmalack': { password: 'Bissau@25%', role: 'manager' },
+    };
+    
+    // Validate credentials
+    const userCreds = userCredentials[username as keyof typeof userCredentials];
+    if (!userCreds || userCreds.password !== password || userCreds.role !== role) {
+      return res.status(401).json({ message: "Credenciais inválidas" });
+    }
+    
+    // Get user from database
+    const user = await storage.getUser(username);
+    if (!user) {
+      return res.status(401).json({ message: "Usuário não encontrado" });
+    }
+    
+    // Store user in session
+    (req.session as any).user = user;
+    
     res.json(user);
   });
 
@@ -55,12 +72,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Erreur lors de la récupération de l'utilisateur" });
+      res.status(500).json({ message: "Erro ao buscar usuário" });
     }
   });
 
   app.post("/api/auth/logout", (req, res) => {
-    res.json({ message: "Déconnecté avec succès" });
+    (req.session as any).user = null;
+    res.json({ message: "Logout realizado com sucesso" });
   });
 
   // Session routes

@@ -22,15 +22,15 @@ export default function Login() {
     },
     onSuccess: () => {
       toast({
-        title: "Connexion réussie",
-        description: "Vous êtes maintenant connecté",
+        title: "Login realizado com sucesso",
+        description: "Você está agora conectado",
       });
       setLocation("/");
     },
     onError: (error) => {
       toast({
-        title: "Erreur de connexion",
-        description: "Vérifiez vos identifiants",
+        title: "Erro de login",
+        description: "Verifique suas credenciais",
         variant: "destructive",
       });
     },
@@ -50,14 +50,14 @@ export default function Login() {
           </div>
           <CardTitle className="text-2xl font-bold text-white">BarManager Pro</CardTitle>
           <CardDescription className="text-gray-400">
-            Connectez-vous à votre compte
+            Faça login em sua conta
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username" className="text-white">
-                Nom d'utilisateur
+                Nome de usuário
               </Label>
               <Input
                 id="username"
@@ -65,14 +65,14 @@ export default function Login() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="bg-gray-700 border-gray-600 text-white"
-                placeholder="votre.nom@example.com"
+                placeholder="seu.nome"
                 required
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="password" className="text-white">
-                Mot de passe
+                Senha
               </Label>
               <Input
                 id="password"
@@ -87,16 +87,16 @@ export default function Login() {
 
             <div className="space-y-2">
               <Label htmlFor="role" className="text-white">
-                Rôle
+                Função
               </Label>
               <Select value={role} onValueChange={setRole}>
                 <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                  <SelectValue placeholder="Sélectionnez votre rôle" />
+                  <SelectValue placeholder="Selecione sua função" />
                 </SelectTrigger>
                 <SelectContent className="bg-gray-700 border-gray-600">
-                  <SelectItem value="cashier">Caissier</SelectItem>
-                  <SelectItem value="server">Serveur</SelectItem>
-                  <SelectItem value="manager">Gérant</SelectItem>
+                  <SelectItem value="cashier">Caixa</SelectItem>
+                  <SelectItem value="server">Empregado</SelectItem>
+                  <SelectItem value="manager">Gerente</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -106,7 +106,7 @@ export default function Login() {
               className="w-full bg-blue-600 hover:bg-blue-700 text-white"
               disabled={loginMutation.isPending}
             >
-              {loginMutation.isPending ? "Connexion..." : "Se connecter"}
+              {loginMutation.isPending ? "Entrando..." : "Entrar"}
             </Button>
           </form>
         </CardContent>
