@@ -34,14 +34,11 @@ export function Sidebar() {
     <aside className="w-64 bg-gray-800 border-r border-gray-700 pt-6">
       <nav className="space-y-2 px-4">
         {navigationItems.map((item) => (
-          <Link key={item.href} href={item.href}>
-            <div
-              className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors cursor-pointer ${
+          <Link key={item.href} href={item.href} className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors cursor-pointer ${
                 isActive(item.href)
                   ? "text-white bg-blue-600"
                   : "text-gray-300 hover:text-white hover:bg-gray-700"
-              }`}
-            >
+              }`}>
               <item.icon className="w-5 h-5" />
               <span>{item.label}</span>
               {item.badge && (
@@ -49,7 +46,6 @@ export function Sidebar() {
                   {item.badge}
                 </span>
               )}
-            </div>
           </Link>
         ))}
       </nav>
