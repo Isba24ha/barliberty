@@ -7,6 +7,7 @@ export function useAuth() {
     retry: false,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
+    staleTime: 0, // Always check auth status
   });
 
   return {

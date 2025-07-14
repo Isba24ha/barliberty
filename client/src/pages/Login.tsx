@@ -22,19 +22,21 @@ export default function Login() {
       return apiRequest("POST", "/api/auth/login", credentials);
     },
     onSuccess: async () => {
-      // Clear all queries and invalidate auth
+      // Clear all queries to reset state
       queryClient.clear();
       
-      // Refetch user data immediately
-      await queryClient.prefetchQuery({ queryKey: ["/api/auth/user"] });
+      // Immediately refetch the user data to update auth state
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
       
       toast({
         title: "Login realizado com sucesso",
         description: "Você está agora conectado",
       });
       
-      // Navigate to dashboard
-      setLocation("/");
+      // Short delay to ensure state is updated, then navigate
+      setTimeout(() => {
+        setLocation("/");
+      }, 100);
     },
     onError: (error) => {
       toast({
