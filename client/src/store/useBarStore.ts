@@ -16,6 +16,7 @@ interface BarStore {
   selectedTable: Table | null;
   showPaymentModal: boolean;
   showSessionModal: boolean;
+  showOpenSessionModal: boolean;
   selectedOrder: Order | null;
   
   // Actions
@@ -28,6 +29,7 @@ interface BarStore {
   setSelectedTable: (table: Table | null) => void;
   setShowPaymentModal: (show: boolean) => void;
   setShowSessionModal: (show: boolean) => void;
+  setShowOpenSessionModal: (show: boolean) => void;
   setSelectedOrder: (order: Order | null) => void;
 }
 
@@ -42,6 +44,7 @@ export const useBarStore = create<BarStore>((set) => ({
   selectedTable: null,
   showPaymentModal: false,
   showSessionModal: false,
+  showOpenSessionModal: false,
   selectedOrder: null,
   
   // Actions
@@ -54,5 +57,6 @@ export const useBarStore = create<BarStore>((set) => ({
   setSelectedTable: (table) => set({ selectedTable: table }),
   setShowPaymentModal: (show) => set({ showPaymentModal: show }),
   setShowSessionModal: (show) => set({ showSessionModal: show }),
+  setShowOpenSessionModal: (show) => set({ showOpenSessionModal: show }),
   setSelectedOrder: (order) => set({ selectedOrder: order }),
 }));

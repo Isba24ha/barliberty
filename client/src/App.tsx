@@ -14,12 +14,14 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { RoleIndicator } from "@/components/layout/RoleIndicator";
 import { PaymentModal } from "@/components/modals/PaymentModal";
 import { SessionModal } from "@/components/modals/SessionModal";
+import { OpenSessionModal } from "@/components/modals/OpenSessionModal";
 
 // Pages
 import Dashboard from "@/pages/Dashboard";
 import Orders from "@/pages/Orders";
 import Tables from "@/pages/Tables";
 import Credits from "@/pages/Credits";
+import SalesHistory from "@/pages/SalesHistory";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 
@@ -60,6 +62,7 @@ function AuthenticatedApp() {
             <Route path="/orders" component={Orders} />
             <Route path="/tables" component={Tables} />
             <Route path="/credits" component={Credits} />
+            <Route path="/sales-history" component={SalesHistory} />
             <Route path="/payments" component={Dashboard} />
             <Route path="/stats" component={Dashboard} />
             <Route component={NotFound} />
@@ -68,6 +71,7 @@ function AuthenticatedApp() {
       </div>
       <PaymentModal />
       <SessionModal />
+      <OpenSessionModal />
     </div>
   );
 }

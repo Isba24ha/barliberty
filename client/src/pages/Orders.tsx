@@ -11,6 +11,7 @@ import {
   DialogTitle, 
   DialogTrigger 
 } from "@/components/ui/dialog";
+import { NewClientModal } from "@/components/modals/NewClientModal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -64,6 +65,7 @@ export default function Orders() {
     orderItems: [],
     notes: ''
   });
+  const [showNewClientModal, setShowNewClientModal] = useState(false);
 
   // Data queries
   const { data: tables = [], isLoading: tablesLoading } = useQuery<Table[]>({
@@ -185,6 +187,11 @@ export default function Orders() {
       anonymousName: name || '',
       step: 'products'
     }));
+  };
+
+  const handleClientCreated = (client: CreditClient) => {
+    queryClient.invalidateQueries({ queryKey: ["/api/credit-clients"] });
+    handleClientSelection('credit', client);
   };
 
   const handleProductAdd = (product: Product) => {
@@ -520,6 +527,15 @@ export default function Orders() {
                             ))}
                           </SelectContent>
                         </Select>
+                        
+                        <Button
+                          onClick={() => setShowNewClientModal(true)}
+                          variant="outline"
+                          className="w-full border-orange-500 text-orange-400 hover:bg-orange-500/20"
+                        >
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Novo Cliente
+                        </Button>
                       </CardContent>
                     </Card>
                   </div>
@@ -550,13 +566,25 @@ export default function Orders() {
                               {categoryProducts.map((product) => (
                                 <div key={product.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
                                   <div className="flex-1">
-                                    <div className="font-medium text-white">{product.name}</div>
+                                    <div className="flex items-center space-x-2">
+                                      <div className="font-medium text-white">{product.name}</div>
+                                      <div className={`px-2 py-1 rounded text-xs ${
+                                        product.stockQuantity <= product.minStockLevel 
+                                          ? 'bg-red-500 text-white' 
+                                          : product.stockQuantity <= product.minStockLevel * 2
+                                          ? 'bg-orange-500 text-white'
+                                          : 'bg-green-500 text-white'
+                                      }`}>
+                                        {product.stockQuantity} em estoque
+                                      </div>
+                                    </div>
                                     <div className="text-sm text-gray-400">{formatCurrency(product.price)}</div>
                                   </div>
                                   <Button
                                     onClick={() => handleProductAdd(product)}
                                     size="sm"
                                     className="bg-orange-600 hover:bg-orange-700"
+                                    disabled={product.stockQuantity <= 0}
                                   >
                                     <Plus className="w-4 h-4" />
                                   </Button>
@@ -703,6 +731,13 @@ export default function Orders() {
           </div>
         )}
       </div>
+
+      {/* New Client Modal */}
+      <NewClientModal
+        open={showNewClientModal}
+        onOpenChange={setShowNewClientModal}
+        onClientCreated={handleClientCreated}
+      />
     </div>
   );
 }

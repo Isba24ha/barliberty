@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/currency";
 
 export function SessionModal() {
-  const { activeSession, sessionStats, showSessionModal, setShowSessionModal } = useBarStore();
+  const { activeSession, sessionStats, showSessionModal, setShowSessionModal, setActiveSession } = useBarStore();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -20,9 +20,10 @@ export function SessionModal() {
     },
     onSuccess: () => {
       toast({
-        title: "Session fermée",
-        description: "La session a été fermée avec succès",
+        title: "Sessão Encerrada",
+        description: "A sessão foi encerrada com sucesso",
       });
+      setActiveSession(null);
       queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
       setShowSessionModal(false);
     },

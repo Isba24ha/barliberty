@@ -224,8 +224,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Order routes
   app.get("/api/orders", requireAuth, async (req, res) => {
     try {
-      const orders = await storage.getAllOrders();
-      res.json(orders);
+      const { status, date } = req.query;
+      
+      if (status === "completed" && date) {
+        // Filter completed orders by date
+        const orders = await storage.getAllOrders();
+        const filterDate = new Date(date as string);
+        const nextDate = new Date(filterDate);
+        nextDate.setDate(nextDate.getDate() + 1);
+        
+        const filteredOrders = orders.filter(order => {
+          const orderDate = new Date(order.createdAt);
+          return order.status === "completed" && 
+                 orderDate >= filterDate && 
+                 orderDate < nextDate;
+        });
+        
+        res.json(filteredOrders);
+      } else {
+        const orders = await storage.getAllOrders();
+        res.json(orders);
+      }
     } catch (error) {
       console.error("Error fetching orders:", error);
       res.status(500).json({ message: "Erreur lors de la récupération des commandes" });

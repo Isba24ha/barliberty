@@ -21,7 +21,7 @@ export function Sidebar() {
     { href: "/", icon: BarChart3, label: PT.nav.dashboard },
     { href: "/orders", icon: ShoppingCart, label: PT.nav.orders, badge: 3 },
     { href: "/tables", icon: Table, label: PT.nav.tables },
-    { href: "/payments", icon: CreditCard, label: "Pagamentos" },
+    { href: "/sales-history", icon: FileText, label: "Histórico de Vendas" },
     { href: "/credits", icon: FileText, label: PT.nav.credits, badge: 2 },
     { href: "/stats", icon: TrendingUp, label: "Estatísticas" },
   ];

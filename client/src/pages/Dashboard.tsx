@@ -7,6 +7,7 @@ import { StatsCards } from "@/components/dashboard/StatsCards";
 import { OrdersPanel } from "@/components/dashboard/OrdersPanel";
 import { TablesOverview } from "@/components/dashboard/TablesOverview";
 import { CreditClientsTable } from "@/components/dashboard/CreditClientsTable";
+import { SessionControls } from "@/components/dashboard/SessionControls";
 import { RefreshCw } from "lucide-react";
 import { SessionStats } from "@shared/schema";
 import { PT } from "@/lib/i18n";
@@ -51,6 +52,9 @@ export default function Dashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Session Controls */}
+      <SessionControls />
 
       {/* Stats Cards */}
       <StatsCards />
