@@ -36,7 +36,6 @@ export default function Inventory() {
     stock: "",
     minStock: "",
     maxStock: "",
-    image: null as File | null,
   });
   const { toast } = useToast();
 
@@ -52,7 +51,7 @@ export default function Inventory() {
   });
 
   const createProductMutation = useMutation({
-    mutationFn: async (productData: FormData) => {
+    mutationFn: async (productData: any) => {
       return apiRequest("POST", "/api/products", productData);
     },
     onSuccess: () => {
@@ -74,7 +73,7 @@ export default function Inventory() {
   });
 
   const updateProductMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: FormData }) => {
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
       return apiRequest("PUT", `/api/products/${id}`, data);
     },
     onSuccess: () => {
@@ -138,7 +137,6 @@ export default function Inventory() {
       stock: "",
       minStock: "",
       maxStock: "",
-      image: null,
     });
   };
 
@@ -152,22 +150,21 @@ export default function Inventory() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("name", newProduct.name);
-    formData.append("description", newProduct.description);
-    formData.append("categoryId", newProduct.categoryId);
-    formData.append("price", newProduct.price);
-    formData.append("stockQuantity", newProduct.stock || "0");
-    formData.append("minStockLevel", newProduct.minStock || "0");
-    
-    if (newProduct.image) {
-      formData.append("image", newProduct.image);
-    }
+    const productData = {
+      name: newProduct.name,
+      description: newProduct.description || "",
+      categoryId: parseInt(newProduct.categoryId),
+      price: parseFloat(newProduct.price),
+      stockQuantity: parseInt(newProduct.stock || "0"),
+      minStockLevel: parseInt(newProduct.minStock || "0"),
+      imageUrl: null, // Pour l'instant, pas de support d'image
+      isActive: true
+    };
 
     if (editingProduct) {
-      updateProductMutation.mutate({ id: editingProduct.id, data: formData });
+      updateProductMutation.mutate({ id: editingProduct.id, data: productData });
     } else {
-      createProductMutation.mutate(formData);
+      createProductMutation.mutate(productData);
     }
   };
 
@@ -181,7 +178,6 @@ export default function Inventory() {
       stock: product.stock?.toString() || "",
       minStock: product.minStock?.toString() || "",
       maxStock: product.maxStock?.toString() || "",
-      image: null,
     });
     setShowAddModal(true);
   };
@@ -318,16 +314,7 @@ export default function Inventory() {
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="image">Image du produit</Label>
-                <Input
-                  id="image"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setNewProduct({...newProduct, image: e.target.files?.[0] || null})}
-                  className="bg-gray-700 border-gray-600"
-                />
-              </div>
+
 
               <div className="flex space-x-3">
                 <Button
