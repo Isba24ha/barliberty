@@ -18,10 +18,12 @@ import { OpenSessionModal } from "@/components/modals/OpenSessionModal";
 
 // Pages
 import Dashboard from "@/pages/Dashboard";
+import ManagerDashboard from "@/pages/ManagerDashboard";
 import Orders from "@/pages/Orders";
 import Tables from "@/pages/Tables";
 import Credits from "@/pages/Credits";
 import SalesHistory from "@/pages/SalesHistory";
+import Inventory from "@/pages/Inventory";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 
@@ -58,11 +60,12 @@ function AuthenticatedApp() {
         <Sidebar />
         <main className="flex-1 overflow-auto">
           <Switch>
-            <Route path="/" component={Dashboard} />
+            <Route path="/" component={user?.role === "manager" ? ManagerDashboard : Dashboard} />
             <Route path="/orders" component={Orders} />
             <Route path="/tables" component={Tables} />
             <Route path="/credits" component={Credits} />
             <Route path="/sales-history" component={SalesHistory} />
+            <Route path="/inventory" component={Inventory} />
             <Route path="/payments" component={Dashboard} />
             <Route path="/stats" component={Dashboard} />
             <Route component={NotFound} />

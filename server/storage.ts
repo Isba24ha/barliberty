@@ -33,7 +33,7 @@ import {
   type SessionStats,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, sum, count } from "drizzle-orm";
+import { eq, and, desc, asc, sum, count, sql, gte, lt } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -231,7 +231,24 @@ export class DatabaseStorage implements IStorage {
 
   // Product operations
   async getAllProducts(): Promise<Product[]> {
-    return await db.select().from(products).where(eq(products.isActive, true));
+    return await db
+      .select({
+        id: products.id,
+        name: products.name,
+        description: products.description,
+        price: products.price,
+        categoryId: products.categoryId,
+        stock: products.stockQuantity,
+        minStock: products.minStockLevel,
+        maxStock: sql<number>`${products.stockQuantity} * 2`,
+        imageUrl: products.imageUrl,
+        isActive: products.isActive,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+      })
+      .from(products)
+      .where(eq(products.isActive, true))
+      .orderBy(products.name);
   }
 
   async getProduct(id: number): Promise<Product | undefined> {
@@ -430,6 +447,68 @@ export class DatabaseStorage implements IStorage {
       .update(absences)
       .set({ isApproved: true, approvedBy })
       .where(eq(absences.id, id));
+  }
+
+  // Manager operations
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(users.firstName);
+  }
+
+  async updateUserStatus(id: string, isActive: boolean): Promise<void> {
+    await db
+      .update(users)
+      .set({ isActive })
+      .where(eq(users.id, id));
+  }
+
+  async getSessionsByPeriod(period: string, date: string): Promise<any[]> {
+    const targetDate = new Date(date);
+    let startDate: Date;
+    let endDate: Date;
+
+    switch (period) {
+      case "daily":
+        startDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+        endDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate() + 1);
+        break;
+      case "weekly":
+        const weekStart = new Date(targetDate);
+        weekStart.setDate(targetDate.getDate() - targetDate.getDay());
+        startDate = weekStart;
+        endDate = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+        break;
+      case "monthly":
+        startDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+        endDate = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 1);
+        break;
+      default:
+        startDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+        endDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate() + 1);
+    }
+
+    return await db
+      .select({
+        id: barSessions.id,
+        userId: barSessions.userId,
+        shiftType: barSessions.shiftType,
+        totalSales: barSessions.totalSales,
+        transactionCount: barSessions.transactionCount,
+        createdAt: barSessions.createdAt,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        },
+      })
+      .from(barSessions)
+      .leftJoin(users, eq(barSessions.userId, users.id))
+      .where(
+        and(
+          gte(barSessions.createdAt, startDate),
+          lt(barSessions.createdAt, endDate)
+        )
+      )
+      .orderBy(desc(barSessions.createdAt));
   }
 }
 

@@ -99,6 +99,7 @@ export const products = pgTable("products", {
   categoryId: integer("category_id").references(() => categories.id),
   stockQuantity: integer("stock_quantity").notNull().default(0),
   minStockLevel: integer("min_stock_level").notNull().default(5),
+  imageUrl: text("image_url"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

@@ -487,6 +487,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Manager statistics routes
+  app.get("/api/manager/stats", requireAuth, async (req, res) => {
+    try {
+      if (req.user.role !== "manager") {
+        return res.status(403).json({ message: "Accès interdit" });
+      }
+
+      const { period = "daily", date = new Date().toISOString().split('T')[0] } = req.query;
+      
+      // Get all sessions for the selected period
+      const sessions = await storage.getSessionsByPeriod(period as string, date as string);
+      
+      // Calculate sales by shift
+      const morningSales = sessions
+        .filter(s => s.shiftType === "morning")
+        .reduce((sum, s) => sum + parseFloat(s.totalSales || "0"), 0);
+      
+      const eveningSales = sessions
+        .filter(s => s.shiftType === "evening")
+        .reduce((sum, s) => sum + parseFloat(s.totalSales || "0"), 0);
+
+      const totalSales = morningSales + eveningSales;
+
+      // Get active credits
+      const creditClients = await storage.getAllCreditClients();
+      const activeCredits = creditClients
+        .filter(c => c.isActive && parseFloat(c.totalCredit) > 0)
+        .reduce((sum, c) => sum + parseFloat(c.totalCredit), 0);
+
+      // Get user statistics
+      const users = await storage.getAllUsers();
+      const activeUsers = users.filter(u => u.isActive).length;
+
+      // Get product statistics
+      const products = await storage.getAllProducts();
+      const lowStockProducts = products.filter(p => 
+        p.stock !== null && p.minStock !== null && p.stock <= p.minStock
+      ).length;
+
+      // Get top products (mock data for now)
+      const topProducts = [
+        { name: "Cerveja Superbock", sales: 45, revenue: "135.00" },
+        { name: "Café Expresso", sales: 32, revenue: "48.00" },
+        { name: "Água Mineral", sales: 28, revenue: "28.00" },
+      ];
+
+      // Get session history
+      const sessionHistory = sessions.slice(0, 10).map(s => ({
+        id: s.id,
+        date: new Date(s.createdAt!).toLocaleDateString("pt-PT"),
+        shift: s.shiftType === "morning" ? "Matin" : "Soir",
+        user: s.user?.firstName + " " + s.user?.lastName,
+        sales: s.totalSales || "0.00",
+        transactions: s.transactionCount || 0,
+      }));
+
+      const managerStats = {
+        dailySales: {
+          morning: morningSales.toFixed(2),
+          evening: eveningSales.toFixed(2),
+          total: totalSales.toFixed(2),
+        },
+        weeklySales: (totalSales * 7).toFixed(2), // Mock weekly calculation
+        monthlySales: (totalSales * 30).toFixed(2), // Mock monthly calculation
+        activeCredits: activeCredits.toFixed(2),
+        totalUsers: users.length,
+        activeUsers,
+        totalProducts: products.length,
+        lowStockProducts,
+        topProducts,
+        sessionHistory,
+      };
+
+      res.json(managerStats);
+    } catch (error) {
+      console.error("Error fetching manager stats:", error);
+      res.status(500).json({ message: "Erreur lors de la récupération des statistiques" });
+    }
+  });
+
+  // Manager users route
+  app.get("/api/manager/users", requireAuth, async (req, res) => {
+    try {
+      if (req.user.role !== "manager") {
+        return res.status(403).json({ message: "Accès interdit" });
+      }
+
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Erreur lors de la récupération des utilisateurs" });
+    }
+  });
+
+  // Update user status (activate/deactivate)
+  app.put("/api/manager/users/:id/status", requireAuth, async (req, res) => {
+    try {
+      if (req.user.role !== "manager") {
+        return res.status(403).json({ message: "Accès interdit" });
+      }
+
+      const { id } = req.params;
+      const { isActive } = req.body;
+
+      await storage.updateUserStatus(id, isActive);
+      res.json({ message: "Statut utilisateur mis à jour" });
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      res.status(500).json({ message: "Erreur lors de la mise à jour du statut" });
+    }
+  });
+
   // Categories routes
   app.get("/api/categories", requireAuth, async (req, res) => {
     try {
