@@ -252,6 +252,8 @@ The application follows a monorepo structure with shared TypeScript types and sc
 - Comprehensive testing confirmed: jose.barros (cashier) auth works perfectly
 - All API endpoints accessible post-login: products, categories, sessions, tables
 - React application properly serves authenticated dashboard interface
+- Logout system verified: proper session termination with 401 unauthorized after logout
+- Authentication routing conflicts resolved with forced redirection to dashboard
 
 ### Production Database Reset (July 2025)
 - Cleaned production database of all test transactions and test clients
