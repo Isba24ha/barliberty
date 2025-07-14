@@ -207,6 +207,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/products/:id", requireAuth, requireRole(["manager"]), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const productId = parseInt(id);
+      
+      if (isNaN(productId)) {
+        return res.status(400).json({ message: "ID de produit invalide" });
+      }
+
+      const productData = insertProductSchema.partial().parse(req.body);
+      await storage.updateProduct(productId, productData);
+      
+      const updatedProduct = await storage.getProduct(productId);
+      res.json(updatedProduct);
+    } catch (error) {
+      console.error("Error updating product:", error);
+      res.status(500).json({ message: "Erreur lors de la mise à jour du produit" });
+    }
+  });
+
+  app.delete("/api/products/:id", requireAuth, requireRole(["manager"]), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const productId = parseInt(id);
+      
+      if (isNaN(productId)) {
+        return res.status(400).json({ message: "ID de produit invalide" });
+      }
+
+      // Soft delete: set isActive to false instead of hard delete
+      await storage.updateProduct(productId, { isActive: false });
+      
+      res.json({ message: "Produit supprimé avec succès", id: productId });
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      res.status(500).json({ message: "Erreur lors de la suppression du produit" });
+    }
+  });
+
   // Credit client routes
   app.get("/api/credit-clients", requireAuth, async (req, res) => {
     try {

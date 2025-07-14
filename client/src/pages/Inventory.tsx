@@ -157,9 +157,8 @@ export default function Inventory() {
     formData.append("description", newProduct.description);
     formData.append("categoryId", newProduct.categoryId);
     formData.append("price", newProduct.price);
-    formData.append("stock", newProduct.stock || "0");
-    formData.append("minStock", newProduct.minStock || "0");
-    formData.append("maxStock", newProduct.maxStock || "0");
+    formData.append("stockQuantity", newProduct.stock || "0");
+    formData.append("minStockLevel", newProduct.minStock || "0");
     
     if (newProduct.image) {
       formData.append("image", newProduct.image);
