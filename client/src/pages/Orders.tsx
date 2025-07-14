@@ -148,27 +148,32 @@ export default function Orders() {
   };
 
   const handleTableSelection = (table: Table) => {
-    // Check if table is occupied and has an existing order
-    if (table.status === 'occupied' && table.currentOrderId) {
-      // Find the existing order for this table
-      const existingOrder = orders.find(order => order.id === table.currentOrderId);
-      if (existingOrder) {
-        // Pre-populate the form with existing order data
-        setOrderStep(prev => ({
-          ...prev,
-          selectedTable: table,
-          clientType: existingOrder.creditClientId ? 'credit' : 'anonymous',
-          selectedClient: existingOrder.creditClientId ? creditClients.find(c => c.id === existingOrder.creditClientId) || null : null,
-          anonymousName: existingOrder.clientName || '',
-          orderItems: existingOrder.items.map(item => ({
-            product: item.product,
-            quantity: item.quantity
-          })),
-          notes: existingOrder.notes || '',
-          step: 'products'
-        }));
-        return;
-      }
+    // Check if table has an existing pending order
+    const existingOrder = orders.find(order => 
+      order.tableId === table.id && order.status === "pending"
+    );
+    
+    if (existingOrder) {
+      // Pre-populate the form with existing order data for adding items
+      setOrderStep(prev => ({
+        ...prev,
+        selectedTable: table,
+        clientType: existingOrder.creditClientId ? 'credit' : 'anonymous',
+        selectedClient: existingOrder.creditClientId ? creditClients.find(c => c.id === existingOrder.creditClientId) || null : null,
+        anonymousName: existingOrder.clientName || '',
+        orderItems: existingOrder.items.map(item => ({
+          product: item.product,
+          quantity: item.quantity
+        })),
+        notes: existingOrder.notes || '',
+        step: 'products'
+      }));
+      
+      toast({
+        title: "Commande existante trouvée",
+        description: `Vous pouvez ajouter des articles à la commande existante de la table ${table.number}`,
+      });
+      return;
     }
 
     // For free tables, start normal process
@@ -439,7 +444,23 @@ export default function Orders() {
               {/* Step 1: Table Selection */}
               {orderStep.step === 'table' && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-white">Selecionar Mesa</h3>
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-white">Selecionar Mesa</h3>
+                    <div className="flex space-x-4 text-sm">
+                      <div className="flex items-center space-x-1">
+                        <div className="w-3 h-3 border border-green-500 rounded"></div>
+                        <span className="text-green-400">Livre</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <div className="w-3 h-3 border border-orange-500 rounded bg-orange-500/20"></div>
+                        <span className="text-orange-400">Peut ajouter articles</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <div className="w-3 h-3 border border-red-500 rounded bg-red-500/20"></div>
+                        <span className="text-red-400">Occupée</span>
+                      </div>
+                    </div>
+                  </div>
                   
                   {Object.entries(groupTablesByLocation(tables)).map(([location, locationTables]) => (
                     <div key={location} className="space-y-2">
@@ -448,22 +469,33 @@ export default function Orders() {
                         <h4 className="font-medium text-white">{getLocationName(location)}</h4>
                       </div>
                       <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-                        {locationTables.map((table) => (
-                          <Button
-                            key={table.id}
-                            onClick={() => handleTableSelection(table)}
-                            variant={table.status === 'free' ? 'outline' : 'secondary'}
-                            className={`h-16 flex-col ${
-                              table.status === 'free' 
-                                ? 'border-green-500 text-green-400 hover:bg-green-500/20' 
-                                : 'border-red-500 text-red-400 cursor-not-allowed'
-                            }`}
-                            disabled={table.status !== 'free'}
-                          >
-                            <span className="font-bold">{table.number}</span>
-                            <span className="text-xs">{table.capacity}p</span>
-                          </Button>
-                        ))}
+                        {locationTables.map((table) => {
+                          const hasPendingOrder = orders.some(order => 
+                            order.tableId === table.id && order.status === "pending"
+                          );
+                          
+                          return (
+                            <Button
+                              key={table.id}
+                              onClick={() => handleTableSelection(table)}
+                              variant={table.status === 'free' ? 'outline' : 'secondary'}
+                              className={`h-16 flex-col ${
+                                table.status === 'free' 
+                                  ? 'border-green-500 text-green-400 hover:bg-green-500/20' 
+                                  : hasPendingOrder
+                                  ? 'border-orange-500 text-orange-400 hover:bg-orange-500/20'
+                                  : 'border-red-500 text-red-400 cursor-not-allowed'
+                              }`}
+                              disabled={table.status !== 'free' && !hasPendingOrder}
+                            >
+                              <span className="font-bold">{table.number}</span>
+                              <span className="text-xs">{table.capacity}p</span>
+                              {hasPendingOrder && (
+                                <span className="text-xs text-orange-300">+</span>
+                              )}
+                            </Button>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
@@ -556,6 +588,18 @@ export default function Orders() {
                       Cliente: {orderStep.clientType === 'credit' ? orderStep.selectedClient?.name : (orderStep.anonymousName || 'Anônimo')}
                     </div>
                   </div>
+
+                  {/* Existing order indicator */}
+                  {orders.some(order => order.tableId === orderStep.selectedTable?.id && order.status === "pending") && (
+                    <div className="bg-orange-500/20 border border-orange-500 rounded-lg p-3">
+                      <div className="flex items-center space-x-2">
+                        <Plus className="w-4 h-4 text-orange-400" />
+                        <span className="text-orange-400 font-medium">
+                          Commande existante trouvée - Les nouveaux articles seront ajoutés
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Products List */}
