@@ -246,6 +246,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Category routes
+  app.get("/api/categories", requireAuth, async (req, res) => {
+    try {
+      const categories = await storage.getAllCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      res.status(500).json({ message: "Erreur lors de la récupération des catégories" });
+    }
+  });
+
+  app.post("/api/categories", requireAuth, requireRole(["manager"]), async (req, res) => {
+    try {
+      const categoryData = insertCategorySchema.parse(req.body);
+      const category = await storage.createCategory(categoryData);
+      res.json(category);
+    } catch (error) {
+      console.error("Error creating category:", error);
+      res.status(500).json({ message: "Erreur lors de la création de la catégorie" });
+    }
+  });
+
+  app.put("/api/categories/:id", requireAuth, requireRole(["manager"]), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const categoryId = parseInt(id);
+      
+      if (isNaN(categoryId)) {
+        return res.status(400).json({ message: "ID de catégorie invalide" });
+      }
+
+      const categoryData = insertCategorySchema.partial().parse(req.body);
+      await storage.updateCategory(categoryId, categoryData);
+      
+      const updatedCategory = await storage.getCategory(categoryId);
+      res.json(updatedCategory);
+    } catch (error) {
+      console.error("Error updating category:", error);
+      res.status(500).json({ message: "Erreur lors de la mise à jour de la catégorie" });
+    }
+  });
+
   // Credit client routes
   app.get("/api/credit-clients", requireAuth, async (req, res) => {
     try {

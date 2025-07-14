@@ -62,7 +62,9 @@ export interface IStorage {
   
   // Category operations
   getAllCategories(): Promise<Category[]>;
+  getCategory(id: number): Promise<Category | undefined>;
   createCategory(category: InsertCategory): Promise<Category>;
+  updateCategory(id: number, category: Partial<InsertCategory>): Promise<void>;
   
   // Credit client operations
   getAllCreditClients(): Promise<CreditClient[]>;
@@ -276,12 +278,24 @@ export class DatabaseStorage implements IStorage {
 
   // Category operations
   async getAllCategories(): Promise<Category[]> {
-    return await db.select().from(categories);
+    return await db.select().from(categories).orderBy(categories.name);
+  }
+
+  async getCategory(id: number): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.id, id));
+    return category;
   }
 
   async createCategory(categoryData: InsertCategory): Promise<Category> {
     const [category] = await db.insert(categories).values(categoryData).returning();
     return category;
+  }
+
+  async updateCategory(id: number, categoryData: Partial<InsertCategory>): Promise<void> {
+    await db
+      .update(categories)
+      .set(categoryData)
+      .where(eq(categories.id, id));
   }
 
   // Credit client operations

@@ -27,7 +27,9 @@ export default function Inventory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [newProduct, setNewProduct] = useState({
     name: "",
     description: "",
@@ -36,6 +38,10 @@ export default function Inventory() {
     stock: "",
     minStock: "",
     maxStock: "",
+  });
+  const [newCategory, setNewCategory] = useState({
+    name: "",
+    description: "",
   });
   const { toast } = useToast();
 
@@ -48,6 +54,7 @@ export default function Inventory() {
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
+    staleTime: 0,
   });
 
   const createProductMutation = useMutation({
@@ -115,6 +122,50 @@ export default function Inventory() {
     },
   });
 
+  const createCategoryMutation = useMutation({
+    mutationFn: async (categoryData: any) => {
+      return apiRequest("POST", "/api/categories", categoryData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Succès",
+        description: "Catégorie créée avec succès",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      queryClient.refetchQueries({ queryKey: ["/api/categories"] });
+      handleCloseCategoryModal();
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la création de la catégorie",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return apiRequest("PUT", `/api/categories/${id}`, data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Succès",
+        description: "Catégorie mise à jour avec succès",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      queryClient.refetchQueries({ queryKey: ["/api/categories"] });
+      handleCloseCategoryModal();
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la mise à jour de la catégorie",
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -137,6 +188,15 @@ export default function Inventory() {
       stock: "",
       minStock: "",
       maxStock: "",
+    });
+  };
+
+  const handleCloseCategoryModal = () => {
+    setShowCategoryModal(false);
+    setEditingCategory(null);
+    setNewCategory({
+      name: "",
+      description: "",
     });
   };
 
@@ -186,6 +246,37 @@ export default function Inventory() {
     if (confirm("Êtes-vous sûr de vouloir supprimer ce produit ?")) {
       deleteProductMutation.mutate(id);
     }
+  };
+
+  const handleSubmitCategory = () => {
+    if (!newCategory.name) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez saisir un nom pour la catégorie",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const categoryData = {
+      name: newCategory.name,
+      description: newCategory.description || "",
+    };
+
+    if (editingCategory) {
+      updateCategoryMutation.mutate({ id: editingCategory.id, data: categoryData });
+    } else {
+      createCategoryMutation.mutate(categoryData);
+    }
+  };
+
+  const handleEditCategory = (category: Category) => {
+    setEditingCategory(category);
+    setNewCategory({
+      name: category.name,
+      description: category.description || "",
+    });
+    setShowCategoryModal(true);
   };
 
   const getStockStatus = (product: Product) => {
@@ -416,6 +507,43 @@ export default function Inventory() {
             ))}
           </SelectContent>
         </Select>
+        <Button
+          onClick={() => setShowCategoryModal(true)}
+          variant="outline"
+          className="border-gray-600 hover:bg-gray-700 text-white"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Catégorie
+        </Button>
+      </div>
+
+      {/* Categories Management */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-white">Gestion des Catégories</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {categories.map((category) => (
+            <Card key={category.id} className="bg-gray-800 border-gray-700">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-white">{category.name}</h4>
+                    {category.description && (
+                      <p className="text-sm text-gray-400 mt-1">{category.description}</p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleEditCategory(category)}
+                    className="text-blue-400 hover:text-blue-300"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
 
       {/* Products Grid */}
@@ -486,6 +614,56 @@ export default function Inventory() {
           <p className="text-gray-400">Aucun produit trouvé</p>
         </div>
       )}
+
+      {/* Category Modal */}
+      <Dialog open={showCategoryModal} onOpenChange={setShowCategoryModal}>
+        <DialogContent className="bg-gray-800 border-gray-700 text-white">
+          <DialogHeader>
+            <DialogTitle>
+              {editingCategory ? "Modifier la catégorie" : "Nouvelle catégorie"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="categoryName">Nom de la catégorie *</Label>
+              <Input
+                id="categoryName"
+                value={newCategory.name}
+                onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
+                className="bg-gray-700 border-gray-600"
+                placeholder="Ex: Boissons, Entrées, Plats..."
+              />
+            </div>
+            <div>
+              <Label htmlFor="categoryDescription">Description</Label>
+              <Textarea
+                id="categoryDescription"
+                value={newCategory.description}
+                onChange={(e) => setNewCategory({...newCategory, description: e.target.value})}
+                className="bg-gray-700 border-gray-600"
+                placeholder="Description de la catégorie (optionnel)"
+                rows={3}
+              />
+            </div>
+            <div className="flex space-x-3">
+              <Button
+                onClick={handleCloseCategoryModal}
+                variant="outline"
+                className="flex-1 border-gray-600 hover:bg-gray-700"
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={handleSubmitCategory}
+                disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
+                className="flex-1 bg-green-600 hover:bg-green-700"
+              >
+                {editingCategory ? "Modifier" : "Créer"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
