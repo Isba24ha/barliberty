@@ -157,7 +157,9 @@ export const payments = pgTable("payments", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   receivedAmount: decimal("received_amount", { precision: 10, scale: 2 }),
   changeAmount: decimal("change_amount", { precision: 10, scale: 2 }),
+  phoneNumber: varchar("phone_number", { length: 20 }),
   isPartial: boolean("is_partial").notNull().default(false),
+  isDirectCreditPayment: boolean("is_direct_credit_payment").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

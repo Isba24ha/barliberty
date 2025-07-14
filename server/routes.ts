@@ -419,6 +419,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Credit payment route
+  app.post("/api/credit-payments", requireAuth, async (req, res) => {
+    try {
+      const { clientId, amount, method, phoneNumber } = req.body;
+      
+      if (!clientId || !amount || !method) {
+        return res.status(400).json({ message: "Données manquantes" });
+      }
+
+      // Get current session
+      const activeSession = await storage.getAnyActiveSession();
+      if (!activeSession) {
+        return res.status(400).json({ message: "Aucune session active trouvée" });
+      }
+
+      // Get the credit client
+      const creditClient = await storage.getCreditClient(parseInt(clientId));
+      if (!creditClient) {
+        return res.status(404).json({ message: "Client non trouvé" });
+      }
+
+      const paymentAmount = parseFloat(amount);
+      const currentCredit = parseFloat(creditClient.totalCredit);
+
+      if (paymentAmount <= 0) {
+        return res.status(400).json({ message: "Montant invalide" });
+      }
+
+      if (paymentAmount > currentCredit) {
+        return res.status(400).json({ message: "Montant supérieur au crédit disponible" });
+      }
+
+      // Calculate new credit balance
+      const newCreditBalance = (currentCredit - paymentAmount).toFixed(2);
+
+      // Update credit client balance
+      await storage.updateCreditClient(parseInt(clientId), {
+        totalCredit: newCreditBalance
+      });
+
+      // Create a payment record (using existing payment system)
+      const paymentData = {
+        orderId: null, // No order for direct credit payment
+        creditClientId: parseInt(clientId),
+        cashierId: req.user.id,
+        sessionId: activeSession.id,
+        method,
+        amount: amount.toString(),
+        receivedAmount: method === "cash" ? amount.toString() : null,
+        changeAmount: "0.00",
+        phoneNumber: phoneNumber || null,
+        isPartial: false,
+        isDirectCreditPayment: true, // Flag to identify direct credit payments
+      };
+
+      const payment = await storage.createPayment(paymentData);
+      
+      res.json({
+        payment,
+        newCreditBalance,
+        message: "Paiement de crédit traité avec succès"
+      });
+    } catch (error) {
+      console.error("Error processing credit payment:", error);
+      res.status(500).json({ message: "Erreur lors du traitement du paiement" });
+    }
+  });
+
   // Categories routes
   app.get("/api/categories", requireAuth, async (req, res) => {
     try {
