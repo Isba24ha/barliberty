@@ -242,6 +242,14 @@ The application follows a monorepo structure with shared TypeScript types and sc
 - Cleaned orphaned references (currentOrderId) in tables
 - Confirmed authentication works: jose.barros (cashier) - Liberty@25%
 
+### Authentication Flow Improvements (July 2025)
+- Fixed login redirect issue where users needed to refresh page after login
+- Improved query cache invalidation to immediately update authentication state
+- Added automatic data prefetching after successful login
+- Enhanced useAuth hook with refetchOnWindowFocus and refetchOnMount
+- Login now redirects directly to dashboard without manual refresh
+- Cleared all cached queries on login to ensure fresh session state
+
 ### Production Database Reset (July 2025)
 - Cleaned production database of all test transactions and test clients
 - Removed all test orders, payments, bar sessions, and absences

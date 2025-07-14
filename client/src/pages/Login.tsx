@@ -21,20 +21,20 @@ export default function Login() {
     mutationFn: async (credentials: { username: string; password: string; role: string }) => {
       return apiRequest("POST", "/api/auth/login", credentials);
     },
-    onSuccess: () => {
-      // Invalidate and refetch user data to trigger immediate re-render
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    onSuccess: async () => {
+      // Clear all queries and invalidate auth
+      queryClient.clear();
+      
+      // Refetch user data immediately
+      await queryClient.prefetchQuery({ queryKey: ["/api/auth/user"] });
       
       toast({
         title: "Login realizado com sucesso",
         description: "Você está agora conectado",
       });
       
-      // Force page refresh to ensure proper state update
-      setTimeout(() => {
-        setLocation("/");
-        window.location.reload();
-      }, 500);
+      // Navigate to dashboard
+      setLocation("/");
     },
     onError: (error) => {
       toast({
