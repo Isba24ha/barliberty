@@ -41,6 +41,13 @@ function AuthenticatedRoutes({ user }: { user: User }) {
     case "/":
       console.log("Rendering dashboard for user:", user.id, "role:", user.role);
       return user.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
+    case "/login":
+      // If authenticated user is on login page, redirect to dashboard
+      console.log("Authenticated user on login page, redirecting to dashboard");
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 100);
+      return user.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
     case "/orders":
       return <Orders />;
     case "/tables":
