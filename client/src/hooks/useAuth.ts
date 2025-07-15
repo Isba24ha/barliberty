@@ -56,7 +56,7 @@ export function useAuth() {
     refetchOnMount: true,
     staleTime: 0,
     gcTime: 0,
-    enabled: !isSessionValid, // Only fetch if no valid session
+    enabled: true, // Always enabled to handle logout/re-login cycles
   });
 
   // Update localStorage when server auth succeeds
@@ -107,6 +107,10 @@ export function useAuth() {
         setIsSessionValid(false);
         setSessionUser(null);
       }
+    } else {
+      // If no session data, clear state
+      setIsSessionValid(false);
+      setSessionUser(null);
     }
   };
 

@@ -30,6 +30,9 @@ export default function Login() {
       // Get user data from login response
       const userData = await response.json();
       
+      // Clear any existing cache first
+      queryClient.clear();
+      
       // Store session in localStorage
       const sessionData = {
         user: userData,
