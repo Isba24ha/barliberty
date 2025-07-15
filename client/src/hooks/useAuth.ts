@@ -54,8 +54,8 @@ export function useAuth() {
     retry: false,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 1 * 60 * 1000, // 1 minute for more responsive auth
+    gcTime: 5 * 60 * 1000, // 5 minutes
     enabled: !isSessionValid || !sessionUser, // Only query server if no valid session
   });
 

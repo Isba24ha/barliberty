@@ -41,27 +41,62 @@ function AuthenticatedRoutes({ user }: { user: User }) {
     case "/":
       console.log("Rendering dashboard for user:", user.id, "role:", user.role);
       return user.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
+    case "/manager":
+      // Manager dashboard route
+      if (user.role === "manager") {
+        console.log("Manager accessing manager dashboard");
+        return <ManagerDashboard />;
+      } else {
+        console.log("Non-manager trying to access manager dashboard, redirecting");
+        setTimeout(() => window.location.href = "/", 100);
+        return <Dashboard />;
+      }
     case "/login":
-      // If authenticated user is on login page, redirect to dashboard
+      // If authenticated user is on login page, redirect to appropriate dashboard
       console.log("Authenticated user on login page, redirecting to dashboard");
+      const dashboardPath = user.role === "manager" ? "/manager" : "/";
       setTimeout(() => {
-        window.location.href = "/";
+        window.location.href = dashboardPath;
       }, 100);
       return user.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
     case "/orders":
+      // Only allow cashiers and servers to access orders
+      if (user.role === "manager") {
+        console.log("Manager redirected from orders to manager dashboard");
+        setTimeout(() => window.location.href = "/manager", 100);
+        return <ManagerDashboard />;
+      }
       return <Orders />;
     case "/tables":
+      // Only allow cashiers and servers to access tables
+      if (user.role === "manager") {
+        console.log("Manager redirected from tables to manager dashboard");
+        setTimeout(() => window.location.href = "/manager", 100);
+        return <ManagerDashboard />;
+      }
       return <Tables />;
     case "/credits":
+      // Only allow cashiers and servers to access credits
+      if (user.role === "manager") {
+        console.log("Manager redirected from credits to manager dashboard");
+        setTimeout(() => window.location.href = "/manager", 100);
+        return <ManagerDashboard />;
+      }
       return <Credits />;
     case "/sales-history":
       return <SalesHistory />;
     case "/inventory":
+      // Only allow managers to access inventory
+      if (user.role !== "manager") {
+        console.log("Non-manager trying to access inventory, redirecting");
+        setTimeout(() => window.location.href = "/", 100);
+        return <Dashboard />;
+      }
       return <Inventory />;
     case "/payments":
-      return <Dashboard />;
+      return user.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
     case "/stats":
-      return <Dashboard />;
+      return user.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
     default:
       console.log("Unknown route:", cleanLocation, "- showing NotFound");
       return <NotFound />;

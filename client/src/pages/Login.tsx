@@ -36,17 +36,39 @@ export default function Login() {
       };
       localStorage.setItem("liberty_session", JSON.stringify(sessionData));
       
+      // Clear all queries to force fresh data loading
+      queryClient.clear();
+      
       toast({
         title: "Login realizado com sucesso",
-        description: "Você está agora conectado",
+        description: `Bem-vindo, ${userData.firstName}!`,
       });
       
-      console.log("Redirecting to dashboard with page reload");
+      console.log("Redirecting user based on role:", userData.role);
       
-      // Force page reload to reset all state and properly initialize with new session
+      // Redirect based on user role
+      let redirectPath = "/";
+      if (userData.role === "manager") {
+        redirectPath = "/manager"; // Managers go to manager dashboard
+      } else {
+        redirectPath = "/"; // Cashiers and servers go to main dashboard
+      }
+      
+      // Use proper SPA navigation first, then fallback to page reload if needed
       setTimeout(() => {
-        window.location.href = "/";
-      }, 200);
+        try {
+          setLocation(redirectPath);
+          console.log("SPA navigation to:", redirectPath);
+          
+          // Force auth state refresh after navigation
+          setTimeout(() => {
+            window.location.reload();
+          }, 100);
+        } catch (error) {
+          console.log("SPA navigation failed, using page reload");
+          window.location.href = redirectPath;
+        }
+      }, 100);
     },
     onError: (error) => {
       console.error("Login failed:", error);
