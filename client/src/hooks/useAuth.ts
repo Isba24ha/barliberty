@@ -10,6 +10,9 @@ export function useAuth() {
     staleTime: 0, // Always check auth status
   });
 
+  // Debug logging to understand the auth state
+  console.log("Auth state:", { user, isLoading, isAuthenticated: !!user });
+
   return {
     user,
     isLoading,
