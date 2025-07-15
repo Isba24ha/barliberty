@@ -52,7 +52,19 @@ function AuthenticatedApp() {
     }
   }, [activeSession, setActiveSession]);
 
-  console.log("AuthenticatedApp rendered for user:", user?.username, "role:", user?.role);
+  console.log("AuthenticatedApp rendered for user:", user?.id, "role:", user?.role);
+
+  // Don't render until user is loaded
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-center">
+          <div className="text-4xl mb-4">🍺</div>
+          <div className="text-white">Carregando perfil...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -64,8 +76,8 @@ function AuthenticatedApp() {
           <Switch>
             <Route path="/">
               {() => {
-                console.log("Root route matched for user:", user?.username, "role:", user?.role);
-                return user?.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
+                console.log("Root route matched for user:", user.id, "role:", user.role);
+                return user.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
               }}
             </Route>
             <Route path="/orders" component={Orders} />
