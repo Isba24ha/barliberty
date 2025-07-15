@@ -57,7 +57,7 @@ interface OrderStep {
 
 export default function Orders() {
   const { toast } = useToast();
-  const search = useSearch();
+  const search = useSearch() || "";
   const [orderStep, setOrderStep] = useState<OrderStep>({
     step: 'table',
     selectedTable: null,
@@ -101,6 +101,8 @@ export default function Orders() {
 
   // Auto-select table from URL parameter
   useEffect(() => {
+    if (!search) return;
+    
     const urlParams = new URLSearchParams(search);
     const tableIdParam = urlParams.get('table');
     
@@ -177,7 +179,7 @@ export default function Orders() {
 
   const handleTableSelection = (table: Table) => {
     // Check if table has an existing pending order
-    const existingOrder = orders.find(order => 
+    const existingOrder = ordersList.find(order => 
       order.tableId === table.id && order.status === "pending"
     );
     
@@ -288,7 +290,7 @@ export default function Orders() {
     }
 
     // Check if this table has an existing pending order
-    const existingOrder = orders.find(order => 
+    const existingOrder = ordersList.find(order => 
       order.tableId === orderStep.selectedTable?.id && 
       order.status === "pending"
     );
@@ -779,7 +781,7 @@ export default function Orders() {
       {/* Active Orders */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-white">Pedidos Ativos</h3>
-        {orders.length === 0 ? (
+        {ordersList.length === 0 ? (
           <Card className="bg-gray-800 border-gray-700">
             <CardContent className="p-8 text-center">
               <ShoppingCart className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -788,7 +790,7 @@ export default function Orders() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {orders.map((order) => (
+            {ordersList.map((order) => (
               <Card key={order.id} className="bg-gray-800 border-gray-700">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
