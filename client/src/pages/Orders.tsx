@@ -70,36 +70,43 @@ export default function Orders() {
   const [showNewClientModal, setShowNewClientModal] = useState(false);
 
   // Data queries
-  const { data: tables = [], isLoading: tablesLoading } = useQuery<Table[]>({
+  const { data: tables, isLoading: tablesLoading } = useQuery<Table[]>({
     queryKey: ["/api/tables"],
     refetchInterval: 5000,
   });
 
-  const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
+  const { data: products, isLoading: productsLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
 
-  const { data: categories = [] } = useQuery<Category[]>({
+  const { data: categories } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
   });
 
-  const { data: creditClients = [] } = useQuery<CreditClient[]>({
+  const { data: creditClients } = useQuery<CreditClient[]>({
     queryKey: ["/api/credit-clients"],
   });
 
-  const { data: orders = [], isLoading: ordersLoading } = useQuery<OrderWithItems[]>({
+  const { data: orders, isLoading: ordersLoading } = useQuery<OrderWithItems[]>({
     queryKey: ["/api/orders"],
     refetchInterval: 5000,
   });
+
+  // Ensure arrays are always defined
+  const tablesList = tables || [];
+  const productsList = products || [];
+  const categoriesList = categories || [];
+  const creditClientsList = creditClients || [];
+  const ordersList = orders || [];
 
   // Auto-select table from URL parameter
   useEffect(() => {
     const urlParams = new URLSearchParams(search);
     const tableIdParam = urlParams.get('table');
     
-    if (tableIdParam && tables.length > 0) {
+    if (tableIdParam && tablesList.length > 0) {
       const tableId = parseInt(tableIdParam);
-      const selectedTable = tables.find(t => t.id === tableId);
+      const selectedTable = tablesList.find(t => t.id === tableId);
       
       if (selectedTable) {
         setOrderStep(prev => ({
@@ -109,7 +116,7 @@ export default function Orders() {
         }));
       }
     }
-  }, [search, tables]);
+  }, [search, tablesList]);
 
   // Mutations
   const createOrderMutation = useMutation({
@@ -180,7 +187,7 @@ export default function Orders() {
         ...prev,
         selectedTable: table,
         clientType: existingOrder.creditClientId ? 'credit' : 'anonymous',
-        selectedClient: existingOrder.creditClientId ? creditClients.find(c => c.id === existingOrder.creditClientId) || null : null,
+        selectedClient: existingOrder.creditClientId ? creditClientsList.find(c => c.id === existingOrder.creditClientId) || null : null,
         anonymousName: existingOrder.clientName || '',
         orderItems: existingOrder.items.map(item => ({
           product: item.product,
@@ -414,7 +421,7 @@ export default function Orders() {
 
   const groupProductsByCategory = (products: Product[]) => {
     const grouped = products.reduce((acc, product) => {
-      const categoryName = categories.find(c => c.id === product.categoryId)?.name || 'Outros';
+      const categoryName = categoriesList.find(c => c.id === product.categoryId)?.name || 'Outros';
       if (!acc[categoryName]) {
         acc[categoryName] = [];
       }
@@ -502,7 +509,7 @@ export default function Orders() {
                     </div>
                   </div>
                   
-                  {Object.entries(groupTablesByLocation(tables)).map(([location, locationTables]) => (
+                  {Object.entries(groupTablesByLocation(tablesList)).map(([location, locationTables]) => (
                     <div key={location} className="space-y-2">
                       <div className="flex items-center space-x-2">
                         <MapPin className="w-4 h-4 text-orange-400" />
@@ -510,7 +517,7 @@ export default function Orders() {
                       </div>
                       <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
                         {locationTables.map((table) => {
-                          const hasPendingOrder = orders.some(order => 
+                          const hasPendingOrder = ordersList.some(order => 
                             order.tableId === table.id && order.status === "pending"
                           );
                           
@@ -592,7 +599,7 @@ export default function Orders() {
                       <CardContent className="space-y-3">
                         <Select 
                           onValueChange={(value) => {
-                            const client = creditClients.find(c => c.id === parseInt(value));
+                            const client = creditClientsList.find(c => c.id === parseInt(value));
                             if (client) {
                               handleClientSelection('credit', client);
                             }
@@ -602,7 +609,7 @@ export default function Orders() {
                             <SelectValue placeholder="Selecionar cliente" />
                           </SelectTrigger>
                           <SelectContent className="bg-gray-800 border-gray-600">
-                            {creditClients.map((client) => (
+                            {creditClientsList.map((client) => (
                               <SelectItem key={client.id} value={client.id.toString()} className="text-white">
                                 {client.name} - {formatCurrency(client.totalCredit)} crédito
                               </SelectItem>
@@ -653,7 +660,7 @@ export default function Orders() {
                     <div className="space-y-4">
                       <h4 className="font-medium text-white">Produtos Disponíveis</h4>
                       <div className="max-h-96 overflow-y-auto">
-                        {Object.entries(groupProductsByCategory(products)).map(([categoryName, categoryProducts]) => (
+                        {Object.entries(groupProductsByCategory(productsList)).map(([categoryName, categoryProducts]) => (
                           <div key={categoryName} className="mb-4">
                             <h5 className="font-medium text-orange-400 mb-2">{categoryName}</h5>
                             <div className="space-y-2">

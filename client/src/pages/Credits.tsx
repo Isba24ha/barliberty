@@ -23,18 +23,21 @@ export default function Credits() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const { toast } = useToast();
 
-  const { data: creditClients = [], isLoading } = useQuery<CreditClient[]>({
+  const { data: creditClients, isLoading } = useQuery<CreditClient[]>({
     queryKey: ["/api/credit-clients"],
     refetchInterval: 10000,
   });
 
-  const filteredClients = creditClients.filter(client =>
+  // Ensure creditClients is always an array
+  const clientsList = creditClients || [];
+
+  const filteredClients = clientsList.filter(client =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalCredit = creditClients.reduce((sum, client) => sum + parseFloat(client.totalCredit), 0);
-  const activeClients = creditClients.filter(client => client.isActive && parseFloat(client.totalCredit) > 0);
+  const totalCredit = clientsList.reduce((sum, client) => sum + parseFloat(client.totalCredit), 0);
+  const activeClients = clientsList.filter(client => client.isActive && parseFloat(client.totalCredit) > 0);
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString("pt-PT");
