@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { User } from "@shared/schema";
 import { useEffect, useState } from "react";
+import { apiRequest } from "@/lib/queryClient";
 
 interface SessionData {
   user: User;
@@ -79,13 +80,24 @@ export function useAuth() {
     }
   }, [user, isLoading]);
 
-  const logout = () => {
+  const logout = async () => {
     console.log("Clearing session from localStorage");
+    
+    // Clear server session
+    try {
+      await apiRequest("POST", "/api/auth/logout");
+      console.log("Server logout successful, clearing client state");
+    } catch (error) {
+      console.error("Server logout failed:", error);
+    }
+    
+    // Clear client state
     localStorage.removeItem(SESSION_KEY);
     setIsSessionValid(false);
     setSessionUser(null);
-    // Force the query to refetch to ensure auth state is reset
-    refetch();
+    
+    // Redirect to login page
+    window.location.replace("/login");
   };
 
   const finalUser = user || sessionUser;

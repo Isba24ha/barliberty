@@ -39,6 +39,7 @@ function AuthenticatedRoutes({ user }: { user: User }) {
   
   switch (cleanLocation) {
     case "/":
+    case "/dashboard":
       console.log("Rendering dashboard for user:", user.id, "role:", user.role);
       return user.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
     case "/manager":
@@ -48,22 +49,22 @@ function AuthenticatedRoutes({ user }: { user: User }) {
         return <ManagerDashboard />;
       } else {
         console.log("Non-manager trying to access manager dashboard, redirecting");
-        setTimeout(() => window.location.href = "/", 100);
+        setTimeout(() => window.location.replace("/dashboard"), 100);
         return <Dashboard />;
       }
     case "/login":
       // If authenticated user is on login page, redirect to appropriate dashboard
       console.log("Authenticated user on login page, redirecting to dashboard");
-      const dashboardPath = user.role === "manager" ? "/manager" : "/";
+      const dashboardPath = user.role === "manager" ? "/manager" : "/dashboard";
       setTimeout(() => {
-        window.location.href = dashboardPath;
+        window.location.replace(dashboardPath);
       }, 100);
       return user.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
     case "/orders":
       // Only allow cashiers and servers to access orders
       if (user.role === "manager") {
         console.log("Manager redirected from orders to manager dashboard");
-        setTimeout(() => window.location.href = "/manager", 100);
+        setTimeout(() => window.location.replace("/manager"), 100);
         return <ManagerDashboard />;
       }
       return <Orders />;
@@ -71,7 +72,7 @@ function AuthenticatedRoutes({ user }: { user: User }) {
       // Only allow cashiers and servers to access tables
       if (user.role === "manager") {
         console.log("Manager redirected from tables to manager dashboard");
-        setTimeout(() => window.location.href = "/manager", 100);
+        setTimeout(() => window.location.replace("/manager"), 100);
         return <ManagerDashboard />;
       }
       return <Tables />;
@@ -79,7 +80,7 @@ function AuthenticatedRoutes({ user }: { user: User }) {
       // Only allow cashiers and servers to access credits
       if (user.role === "manager") {
         console.log("Manager redirected from credits to manager dashboard");
-        setTimeout(() => window.location.href = "/manager", 100);
+        setTimeout(() => window.location.replace("/manager"), 100);
         return <ManagerDashboard />;
       }
       return <Credits />;
@@ -89,7 +90,7 @@ function AuthenticatedRoutes({ user }: { user: User }) {
       // Only allow managers to access inventory
       if (user.role !== "manager") {
         console.log("Non-manager trying to access inventory, redirecting");
-        setTimeout(() => window.location.href = "/", 100);
+        setTimeout(() => window.location.replace("/dashboard"), 100);
         return <Dashboard />;
       }
       return <Inventory />;
@@ -159,8 +160,9 @@ function AuthenticatedApp() {
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const [location] = useLocation();
 
-  console.log("Router render:", { isAuthenticated, isLoading, userRole: user?.role });
+  console.log("Router render:", { isAuthenticated, isLoading, userRole: user?.role, location });
 
   if (isLoading) {
     console.log("Showing loading screen");
@@ -177,11 +179,16 @@ function Router() {
   // For unauthenticated users, always show login page
   if (!isAuthenticated) {
     console.log("Showing login page - user not authenticated");
+    // Only redirect if not already on login page
+    if (location !== "/login") {
+      console.log("Redirecting to login page");
+      setTimeout(() => window.location.replace("/login"), 100);
+    }
     return <Login />;
   }
 
   // For authenticated users, show the main app
-  console.log("Showing authenticated app for user:", user?.username);
+  console.log("Showing authenticated app for user:", user?.id);
   return <AuthenticatedApp />;
 }
 

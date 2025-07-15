@@ -47,27 +47,17 @@ export default function Login() {
       console.log("Redirecting user based on role:", userData.role);
       
       // Redirect based on user role
-      let redirectPath = "/";
+      let redirectPath = "/dashboard";
       if (userData.role === "manager") {
         redirectPath = "/manager"; // Managers go to manager dashboard
       } else {
-        redirectPath = "/"; // Cashiers and servers go to main dashboard
+        redirectPath = "/dashboard"; // Cashiers and servers go to main dashboard
       }
       
-      // Use proper SPA navigation first, then fallback to page reload if needed
+      // Use client-side routing without page refresh
       setTimeout(() => {
-        try {
-          setLocation(redirectPath);
-          console.log("SPA navigation to:", redirectPath);
-          
-          // Force auth state refresh after navigation
-          setTimeout(() => {
-            window.location.reload();
-          }, 100);
-        } catch (error) {
-          console.log("SPA navigation failed, using page reload");
-          window.location.href = redirectPath;
-        }
+        setLocation(redirectPath);
+        console.log("Client-side navigation to:", redirectPath);
       }, 100);
     },
     onError: (error) => {
