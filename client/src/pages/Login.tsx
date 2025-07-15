@@ -19,24 +19,33 @@ export default function Login() {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string; role: string }) => {
+      console.log("Attempting login with:", { username, role });
       return apiRequest("POST", "/api/auth/login", credentials);
     },
     onSuccess: async () => {
+      console.log("Login successful, clearing cache and refetching user data");
+      
       // Clear all queries to reset state
       queryClient.clear();
       
       // Immediately refetch the user data to update auth state
       await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
       
+      // Wait for auth state to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       toast({
         title: "Login realizado com sucesso",
         description: "Você está agora conectado",
       });
       
-      // Force navigation to dashboard
-      window.location.href = "/";
+      console.log("Auth state updated, should redirect to dashboard");
+      
+      // The Router component will automatically redirect based on auth state
+      // No need for manual navigation
     },
     onError: (error) => {
+      console.error("Login failed:", error);
       toast({
         title: "Erro de login",
         description: "Verifique suas credenciais",

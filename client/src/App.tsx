@@ -82,7 +82,10 @@ function AuthenticatedApp() {
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
+  console.log("Router render:", { isAuthenticated, isLoading });
+
   if (isLoading) {
+    console.log("Showing loading screen");
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
@@ -95,10 +98,12 @@ function Router() {
 
   // For unauthenticated users, always show login page
   if (!isAuthenticated) {
+    console.log("Showing login page");
     return <Login />;
   }
 
   // For authenticated users, show the main app
+  console.log("Showing authenticated app");
   return <AuthenticatedApp />;
 }
 

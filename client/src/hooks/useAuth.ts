@@ -10,8 +10,8 @@ export function useAuth() {
     staleTime: 0, // Always check auth status
   });
 
-  // Remove debug logging for production
-  // console.log("Auth state:", { user, isLoading, isAuthenticated: !!user });
+  // Debug logging to track auth state changes
+  console.log("Auth state:", { user, isLoading, isAuthenticated: !!user });
 
   return {
     user,
