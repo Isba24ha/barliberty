@@ -3,10 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table } from "@shared/schema";
 
 export function TablesOverview() {
-  const { data: tables = [], isLoading } = useQuery<Table[]>({
+  const { data: tables, isLoading } = useQuery<Table[]>({
     queryKey: ["/api/tables"],
     refetchInterval: 5000,
   });
+
+  // Ensure tables is always an array
+  const tablesList = tables || [];
 
   const getTableStatusColor = (status: string) => {
     switch (status) {
@@ -61,7 +64,7 @@ export function TablesOverview() {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-4 gap-3">
-          {tables.map((table) => (
+          {tablesList.map((table) => (
             <div
               key={table.id}
               className="bg-gray-700 p-3 rounded-lg text-center cursor-pointer hover:bg-gray-600 transition-colors"

@@ -63,14 +63,14 @@ export function CreditClientsTable() {
               </tr>
             </thead>
             <tbody>
-              {creditClients.length === 0 ? (
+              {clients.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-8 text-gray-400">
                     Aucun client à crédit
                   </td>
                 </tr>
               ) : (
-                creditClients.map((client) => (
+                clients.map((client) => (
                   <tr key={client.id} className="border-b border-gray-600">
                     <td className="py-3">
                       <div>
