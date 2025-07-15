@@ -82,8 +82,6 @@ function AuthenticatedApp() {
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  console.log("Router state:", { isAuthenticated, isLoading });
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
@@ -95,25 +93,13 @@ function Router() {
     );
   }
 
+  // For unauthenticated users, always show login page
   if (!isAuthenticated) {
-    console.log("Rendering login routes");
-    return (
-      <div>
-        <Switch>
-          <Route path="/" component={Login} />
-          <Route path="/login" component={Login} />
-          <Route component={NotFound} />
-        </Switch>
-      </div>
-    );
+    return <Login />;
   }
 
-  console.log("Rendering authenticated app");
-  return (
-    <Switch>
-      <Route component={AuthenticatedApp} />
-    </Switch>
-  );
+  // For authenticated users, show the main app
+  return <AuthenticatedApp />;
 }
 
 function App() {
