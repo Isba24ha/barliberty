@@ -672,13 +672,13 @@ export default function Orders() {
                                     <div className="flex items-center space-x-2">
                                       <div className="font-medium text-white">{product.name}</div>
                                       <div className={`px-2 py-1 rounded text-xs ${
-                                        product.stockQuantity <= product.minStockLevel 
+                                        product.stock <= product.minStock 
                                           ? 'bg-red-500 text-white' 
-                                          : product.stockQuantity <= product.minStockLevel * 2
+                                          : product.stock <= product.minStock * 2
                                           ? 'bg-orange-500 text-white'
                                           : 'bg-green-500 text-white'
                                       }`}>
-                                        {product.stockQuantity} em estoque
+                                        {product.stock} em estoque
                                       </div>
                                     </div>
                                     <div className="text-sm text-gray-400">{formatCurrency(product.price)}</div>
@@ -687,7 +687,7 @@ export default function Orders() {
                                     onClick={() => handleProductAdd(product)}
                                     size="sm"
                                     className="bg-orange-600 hover:bg-orange-700"
-                                    disabled={product.stockQuantity <= 0}
+                                    disabled={product.stock <= 0}
                                   >
                                     <Plus className="w-4 h-4" />
                                   </Button>
