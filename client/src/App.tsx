@@ -62,7 +62,12 @@ function AuthenticatedApp() {
         <Sidebar />
         <main className="flex-1 overflow-auto">
           <Switch>
-            <Route path="/" component={user?.role === "manager" ? ManagerDashboard : Dashboard} />
+            <Route path="/">
+              {() => {
+                console.log("Root route matched for user:", user?.username, "role:", user?.role);
+                return user?.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
+              }}
+            </Route>
             <Route path="/orders" component={Orders} />
             <Route path="/tables" component={Tables} />
             <Route path="/credits" component={Credits} />
