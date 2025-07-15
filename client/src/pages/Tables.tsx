@@ -12,15 +12,19 @@ import { formatCurrency } from "@/lib/currency";
 export default function Tables() {
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   
-  const { data: tables = [], isLoading } = useQuery<Table[]>({
+  const { data: tables, isLoading } = useQuery<Table[]>({
     queryKey: ["/api/tables"],
     refetchInterval: 5000,
   });
 
-  const { data: orders = [] } = useQuery<OrderWithItems[]>({
+  const { data: orders } = useQuery<OrderWithItems[]>({
     queryKey: ["/api/orders/pending"],
     refetchInterval: 5000,
   });
+
+  // Ensure arrays are always defined
+  const tablesList = tables || [];
+  const ordersList = orders || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -48,12 +52,12 @@ export default function Tables() {
     }
   };
 
-  const occupiedTables = tables.filter(t => t.status === "occupied").length;
-  const freeTables = tables.filter(t => t.status === "free").length;
-  const reservedTables = tables.filter(t => t.status === "reserved").length;
+  const occupiedTables = tablesList.filter(t => t.status === "occupied").length;
+  const freeTables = tablesList.filter(t => t.status === "free").length;
+  const reservedTables = tablesList.filter(t => t.status === "reserved").length;
 
   const getTableOrder = (tableId: number): OrderWithItems | undefined => {
-    return orders.find(order => order.tableId === tableId && order.status === "pending");
+    return ordersList.find(order => order.tableId === tableId && order.status === "pending");
   };
 
   const getLocationName = (location: string) => {
@@ -129,7 +133,7 @@ export default function Tables() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Total</p>
-                <p className="text-2xl font-bold text-white">{tables.length}</p>
+                <p className="text-2xl font-bold text-white">{tablesList.length}</p>
               </div>
               <div className="w-12 h-12 bg-blue-500 bg-opacity-20 rounded-full flex items-center justify-center">
                 <Users className="w-6 h-6 text-blue-400" />
@@ -182,7 +186,7 @@ export default function Tables() {
       </div>
 
       {/* Tables by Location */}
-      {Object.entries(groupTablesByLocation(tables)).map(([location, locationTables]) => (
+      {Object.entries(groupTablesByLocation(tablesList)).map(([location, locationTables]) => (
         <div key={location} className="mb-8">
           <h3 className="text-xl font-bold text-white mb-4 flex items-center">
             <Users className="w-5 h-5 mr-2 text-orange-400" />
