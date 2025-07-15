@@ -31,18 +31,18 @@ export default function Login() {
       // Immediately refetch the user data to update auth state
       await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
       
-      // Wait for auth state to update
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait for auth state to update and stabilize
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       toast({
         title: "Login realizado com sucesso",
         description: "Você está agora conectado",
       });
       
-      console.log("Auth state updated, should redirect to dashboard");
+      console.log("Auth state updated, triggering redirection");
       
-      // The Router component will automatically redirect based on auth state
-      // No need for manual navigation
+      // Force a complete page reload to ensure proper redirection in deployment
+      window.location.reload();
     },
     onError: (error) => {
       console.error("Login failed:", error);

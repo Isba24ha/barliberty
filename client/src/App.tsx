@@ -80,9 +80,9 @@ function AuthenticatedApp() {
 }
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
-  console.log("Router render:", { isAuthenticated, isLoading });
+  console.log("Router render:", { isAuthenticated, isLoading, userRole: user?.role });
 
   if (isLoading) {
     console.log("Showing loading screen");
@@ -98,12 +98,12 @@ function Router() {
 
   // For unauthenticated users, always show login page
   if (!isAuthenticated) {
-    console.log("Showing login page");
+    console.log("Showing login page - user not authenticated");
     return <Login />;
   }
 
   // For authenticated users, show the main app
-  console.log("Showing authenticated app");
+  console.log("Showing authenticated app for user:", user?.username);
   return <AuthenticatedApp />;
 }
 

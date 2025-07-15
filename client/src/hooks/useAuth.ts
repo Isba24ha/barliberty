@@ -8,6 +8,7 @@ export function useAuth() {
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     staleTime: 0, // Always check auth status
+    gcTime: 0, // Don't cache auth data
   });
 
   // Debug logging to track auth state changes
