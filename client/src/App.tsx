@@ -52,6 +52,8 @@ function AuthenticatedApp() {
     }
   }, [activeSession, setActiveSession]);
 
+  console.log("AuthenticatedApp rendered for user:", user?.username, "role:", user?.role);
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <RoleIndicator />
@@ -68,7 +70,12 @@ function AuthenticatedApp() {
             <Route path="/inventory" component={Inventory} />
             <Route path="/payments" component={Dashboard} />
             <Route path="/stats" component={Dashboard} />
-            <Route component={NotFound} />
+            <Route>
+              {() => {
+                console.log("Fallback route triggered - showing NotFound");
+                return <NotFound />;
+              }}
+            </Route>
           </Switch>
         </main>
       </div>
