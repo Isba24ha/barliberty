@@ -83,6 +83,33 @@ export function useAuth() {
     refetch();
   };
 
+  const forceRefreshAuth = () => {
+    console.log("Forcing auth state refresh");
+    const sessionData = localStorage.getItem(SESSION_KEY);
+    if (sessionData) {
+      try {
+        const parsed: SessionData = JSON.parse(sessionData);
+        const now = Date.now();
+        
+        if (now < parsed.expiresAt) {
+          setIsSessionValid(true);
+          setSessionUser(parsed.user);
+          console.log("Auth state refreshed from localStorage:", parsed.user.id);
+        } else {
+          console.log("Session expired during refresh");
+          localStorage.removeItem(SESSION_KEY);
+          setIsSessionValid(false);
+          setSessionUser(null);
+        }
+      } catch (error) {
+        console.error("Error parsing session data during refresh:", error);
+        localStorage.removeItem(SESSION_KEY);
+        setIsSessionValid(false);
+        setSessionUser(null);
+      }
+    }
+  };
+
   const finalUser = isSessionValid ? sessionUser : user;
   const finalLoading = isSessionValid ? false : isLoading;
 
@@ -99,5 +126,6 @@ export function useAuth() {
     isAuthenticated: !!finalUser,
     refetch,
     logout,
+    forceRefreshAuth,
   };
 }

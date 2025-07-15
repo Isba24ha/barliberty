@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { Logo } from "@/components/Logo";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -16,6 +17,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("cashier");
   const { toast } = useToast();
+  const { forceRefreshAuth } = useAuth();
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string; role: string }) => {
@@ -36,17 +38,20 @@ export default function Login() {
       };
       localStorage.setItem("liberty_session", JSON.stringify(sessionData));
       
+      // Force refresh auth state to immediately update authentication
+      forceRefreshAuth();
+      
       toast({
         title: "Login realizado com sucesso",
         description: "Você está agora conectado",
       });
       
-      console.log("Redirecting to dashboard with page reload");
+      console.log("Redirecting to dashboard programmatically without page reload");
       
-      // Force page reload to reset all state and properly initialize with new session
+      // Programmatic redirect without page reload using wouter
       setTimeout(() => {
-        window.location.href = "/";
-      }, 500);
+        setLocation("/");
+      }, 100);
     },
     onError: (error) => {
       console.error("Login failed:", error);
