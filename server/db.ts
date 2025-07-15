@@ -16,9 +16,25 @@ if (!process.env.DATABASE_URL) {
 
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  max: 10,
-  connectionTimeoutMillis: 30000,
+  max: 20, // Increased connection pool size
+  min: 5, // Minimum connections to maintain
+  connectionTimeoutMillis: 10000, // Reduced timeout for faster failures
   idleTimeoutMillis: 30000,
+  acquireTimeoutMillis: 5000, // Timeout for acquiring connection
+  allowExitOnIdle: false, // Keep connections alive
 });
 
 export const db = drizzle({ client: pool, schema });
+
+// Database connection monitoring
+pool.on('connect', () => {
+  console.log('Database connection established');
+});
+
+pool.on('error', (err) => {
+  console.error('Database connection error:', err);
+});
+
+pool.on('remove', () => {
+  console.log('Database connection removed from pool');
+});
