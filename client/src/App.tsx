@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -27,7 +27,36 @@ import Inventory from "@/pages/Inventory";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 
-import { BarSession } from "@shared/schema";
+import { BarSession, User } from "@shared/schema";
+
+function AuthenticatedRoutes({ user }: { user: User }) {
+  const [location] = useLocation();
+  
+  console.log("AuthenticatedRoutes - Current location:", location, "User:", user.id, "Role:", user.role);
+  
+  switch (location) {
+    case "/":
+      console.log("Rendering dashboard for user:", user.id, "role:", user.role);
+      return user.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
+    case "/orders":
+      return <Orders />;
+    case "/tables":
+      return <Tables />;
+    case "/credits":
+      return <Credits />;
+    case "/sales-history":
+      return <SalesHistory />;
+    case "/inventory":
+      return <Inventory />;
+    case "/payments":
+      return <Dashboard />;
+    case "/stats":
+      return <Dashboard />;
+    default:
+      console.log("Unknown route:", location, "- showing NotFound");
+      return <NotFound />;
+  }
+}
 
 function AuthenticatedApp() {
   const { user } = useAuth();
@@ -73,27 +102,7 @@ function AuthenticatedApp() {
       <div className="flex">
         <Sidebar />
         <main className="flex-1 overflow-auto">
-          <Switch>
-            <Route path="/">
-              {() => {
-                console.log("Root route matched for user:", user.id, "role:", user.role);
-                return user.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
-              }}
-            </Route>
-            <Route path="/orders" component={Orders} />
-            <Route path="/tables" component={Tables} />
-            <Route path="/credits" component={Credits} />
-            <Route path="/sales-history" component={SalesHistory} />
-            <Route path="/inventory" component={Inventory} />
-            <Route path="/payments" component={Dashboard} />
-            <Route path="/stats" component={Dashboard} />
-            <Route>
-              {() => {
-                console.log("Fallback route triggered - showing NotFound");
-                return <NotFound />;
-              }}
-            </Route>
-          </Switch>
+          <AuthenticatedRoutes user={user} />
         </main>
       </div>
       <PaymentModal />
