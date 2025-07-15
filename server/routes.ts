@@ -41,12 +41,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       'rafa': { password: 'Liberty@25%', role: 'server' },
       'filinto': { password: 'Liberty@25%', role: 'server' },
       'junior': { password: 'Liberty@25%', role: 'server' },
+      'server-001': { password: 'Liberty@25%', role: 'server' },
       // Cashiers
       'jose.barros': { password: 'Liberty@25%', role: 'cashier' },
       'milisiana': { password: 'Liberty@25%', role: 'cashier' },
+      'cashier-001': { password: 'Liberty@25%', role: 'cashier' },
       // Managers
       'lucelle': { password: 'Bissau@25%', role: 'manager' },
       'carlmalack': { password: 'Bissau@25%', role: 'manager' },
+      'manager': { password: 'Liberty@25%', role: 'manager' },
+      'manager-001': { password: 'Liberty@25%', role: 'manager' },
     };
     
     // Validate credentials
