@@ -198,7 +198,7 @@ export default function Credits() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Total Clientes</p>
-                <p className="text-2xl font-bold text-white">{creditClients.length}</p>
+                <p className="text-2xl font-bold text-white">{clientsList.length}</p>
               </div>
               <div className="w-12 h-12 bg-blue-500 bg-opacity-20 rounded-full flex items-center justify-center">
                 <User className="w-6 h-6 text-blue-400" />
