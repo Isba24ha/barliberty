@@ -108,9 +108,10 @@ export function Header() {
               variant="ghost"
               size="sm"
               onClick={handleLogout}
-              className="text-gray-400 hover:text-white"
+              className="text-gray-400 hover:text-white flex items-center space-x-2"
             >
               <LogOut className="w-4 h-4" />
+              <span>Déconnexion</span>
             </Button>
           </div>
         </div>
