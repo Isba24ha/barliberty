@@ -82,6 +82,8 @@ function AuthenticatedApp() {
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
+  console.log("Router state:", { isAuthenticated, isLoading });
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
@@ -93,19 +95,23 @@ function Router() {
     );
   }
 
-  return (
-    <Switch>
-      {!isAuthenticated ? (
-        <>
+  if (!isAuthenticated) {
+    console.log("Rendering login routes");
+    return (
+      <div>
+        <Switch>
           <Route path="/" component={Login} />
           <Route path="/login" component={Login} />
           <Route component={NotFound} />
-        </>
-      ) : (
-        <>
-          <Route component={AuthenticatedApp} />
-        </>
-      )}
+        </Switch>
+      </div>
+    );
+  }
+
+  console.log("Rendering authenticated app");
+  return (
+    <Switch>
+      <Route component={AuthenticatedApp} />
     </Switch>
   );
 }
