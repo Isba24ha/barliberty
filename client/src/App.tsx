@@ -32,9 +32,12 @@ import { BarSession, User } from "@shared/schema";
 function AuthenticatedRoutes({ user }: { user: User }) {
   const [location] = useLocation();
   
-  console.log("AuthenticatedRoutes - Current location:", location, "User:", user.id, "Role:", user.role);
+  // Clean the location string to remove any quotes or escaping
+  const cleanLocation = location.replace(/['"]/g, '');
   
-  switch (location) {
+  console.log("AuthenticatedRoutes - Current location:", cleanLocation, "User:", user.id, "Role:", user.role);
+  
+  switch (cleanLocation) {
     case "/":
       console.log("Rendering dashboard for user:", user.id, "role:", user.role);
       return user.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
@@ -53,7 +56,7 @@ function AuthenticatedRoutes({ user }: { user: User }) {
     case "/stats":
       return <Dashboard />;
     default:
-      console.log("Unknown route:", location, "- showing NotFound");
+      console.log("Unknown route:", cleanLocation, "- showing NotFound");
       return <NotFound />;
   }
 }
