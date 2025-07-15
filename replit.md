@@ -255,6 +255,15 @@ The application follows a monorepo structure with shared TypeScript types and sc
 - Logout system verified: proper session termination with 401 unauthorized after logout
 - Authentication routing conflicts resolved with forced redirection to dashboard
 
+### Frontend Redirection Fix (July 2025)
+- Resolved complex wouter routing configuration causing 404 errors at root URL
+- Simplified authentication routing to direct component rendering instead of nested Switch/Route
+- Implemented robust post-login redirection with page reload for deployment stability
+- Added comprehensive debugging for authentication state transitions
+- Fixed authentication caching issues with gcTime: 0 configuration
+- Tested login flow: milisiana/Liberty@25% successfully authenticates and redirects to dashboard
+- Frontend redirection now works correctly in both development and deployment environments
+
 ### Production Database Reset (July 2025)
 - Cleaned production database of all test transactions and test clients
 - Removed all test orders, payments, bar sessions, and absences
