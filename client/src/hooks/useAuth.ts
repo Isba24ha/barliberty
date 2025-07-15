@@ -56,12 +56,12 @@ export function useAuth() {
     refetchOnMount: true,
     staleTime: 0,
     gcTime: 0,
-    enabled: !isSessionValid, // Only fetch if no valid session
+    enabled: true, // Always validate with server
   });
 
   // Update localStorage when server auth succeeds
   useEffect(() => {
-    if (user && !isSessionValid) {
+    if (user) {
       const sessionData: SessionData = {
         user,
         timestamp: Date.now(),
@@ -71,8 +71,13 @@ export function useAuth() {
       setIsSessionValid(true);
       setSessionUser(user);
       console.log("Session stored in localStorage:", user.id);
+    } else if (!isLoading && !user) {
+      // Server returned 401, clear localStorage
+      localStorage.removeItem(SESSION_KEY);
+      setIsSessionValid(false);
+      setSessionUser(null);
     }
-  }, [user, isSessionValid]);
+  }, [user, isLoading]);
 
   const logout = () => {
     console.log("Clearing session from localStorage");
@@ -83,8 +88,8 @@ export function useAuth() {
     refetch();
   };
 
-  const finalUser = isSessionValid ? sessionUser : user;
-  const finalLoading = isSessionValid ? false : isLoading;
+  const finalUser = user || sessionUser;
+  const finalLoading = isLoading;
 
   console.log("Auth state:", { 
     user: finalUser?.id, 
