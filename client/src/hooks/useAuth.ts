@@ -52,11 +52,11 @@ export function useAuth() {
   const { data: user, isLoading, refetch } = useQuery<User | null>({
     queryKey: ["/api/auth/user"],
     retry: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     refetchOnMount: true,
-    staleTime: 0,
-    gcTime: 0,
-    enabled: true, // Always validate with server
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    enabled: !isSessionValid || !sessionUser, // Only query server if no valid session
   });
 
   // Update localStorage when server auth succeeds

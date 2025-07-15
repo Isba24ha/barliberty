@@ -31,36 +31,67 @@ const requireRole = (roles: string[]) => (req: any, res: any, next: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Cache user data for faster authentication
+  const userCache = new Map();
+  
+  // Preload user data into cache at startup
+  const preloadUserCache = async () => {
+    try {
+      const userIds = ['rafa', 'filinto', 'junior', 'server-001', 'jose.barros', 'milisiana', 'cashier-001', 'lucelle', 'carlmalack', 'manager', 'manager-001'];
+      const users = await Promise.all(userIds.map(id => storage.getUser(id)));
+      
+      users.forEach(user => {
+        if (user) {
+          userCache.set(user.id, user);
+        }
+      });
+      
+      console.log(`Preloaded ${userCache.size} users into cache`);
+    } catch (error) {
+      console.error('Error preloading user cache:', error);
+    }
+  };
+  
+  // Initialize cache
+  preloadUserCache();
+
   // Auth routes
   app.post("/api/auth/login", async (req, res) => {
     const { username, password, role } = req.body;
     
-    // Define user credentials
-    const userCredentials = {
+    // Define user credentials with faster lookup
+    const userCredentials = new Map([
       // Servers
-      'rafa': { password: 'Liberty@25%', role: 'server' },
-      'filinto': { password: 'Liberty@25%', role: 'server' },
-      'junior': { password: 'Liberty@25%', role: 'server' },
-      'server-001': { password: 'Liberty@25%', role: 'server' },
+      ['rafa', { password: 'Liberty@25%', role: 'server' }],
+      ['filinto', { password: 'Liberty@25%', role: 'server' }],
+      ['junior', { password: 'Liberty@25%', role: 'server' }],
+      ['server-001', { password: 'Liberty@25%', role: 'server' }],
       // Cashiers
-      'jose.barros': { password: 'Liberty@25%', role: 'cashier' },
-      'milisiana': { password: 'Liberty@25%', role: 'cashier' },
-      'cashier-001': { password: 'Liberty@25%', role: 'cashier' },
+      ['jose.barros', { password: 'Liberty@25%', role: 'cashier' }],
+      ['milisiana', { password: 'Liberty@25%', role: 'cashier' }],
+      ['cashier-001', { password: 'Liberty@25%', role: 'cashier' }],
       // Managers
-      'lucelle': { password: 'Bissau@25%', role: 'manager' },
-      'carlmalack': { password: 'Bissau@25%', role: 'manager' },
-      'manager': { password: 'Liberty@25%', role: 'manager' },
-      'manager-001': { password: 'Liberty@25%', role: 'manager' },
-    };
+      ['lucelle', { password: 'Bissau@25%', role: 'manager' }],
+      ['carlmalack', { password: 'Bissau@25%', role: 'manager' }],
+      ['manager', { password: 'Liberty@25%', role: 'manager' }],
+      ['manager-001', { password: 'Liberty@25%', role: 'manager' }],
+    ]);
     
-    // Validate credentials
-    const userCreds = userCredentials[username as keyof typeof userCredentials];
+    // Fast credential validation
+    const userCreds = userCredentials.get(username);
     if (!userCreds || userCreds.password !== password || userCreds.role !== role) {
       return res.status(401).json({ message: "Credenciais inválidas" });
     }
     
-    // Get user from database
-    const user = await storage.getUser(username);
+    // Get user from cache first, fallback to database
+    let user = userCache.get(username);
+    if (!user) {
+      user = await storage.getUser(username);
+      if (user) {
+        userCache.set(username, user);
+      }
+    }
+    
     if (!user) {
       return res.status(401).json({ message: "Usuário não encontrado" });
     }
@@ -73,8 +104,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/auth/user", requireAuth, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.id);
-      res.json(user);
+      // Return cached user from session, no need to query database
+      res.json(req.user);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Erro ao buscar usuário" });

@@ -46,7 +46,7 @@ export default function Login() {
       // Force page reload to reset all state and properly initialize with new session
       setTimeout(() => {
         window.location.href = "/";
-      }, 500);
+      }, 200);
     },
     onError: (error) => {
       console.error("Login failed:", error);
@@ -127,7 +127,14 @@ export default function Login() {
               className="w-full bg-blue-600 hover:bg-blue-700 text-white"
               disabled={loginMutation.isPending}
             >
-              {loginMutation.isPending ? "Entrando..." : "Entrar"}
+              {loginMutation.isPending ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                  Entrando...
+                </div>
+              ) : (
+                "Entrar"
+              )}
             </Button>
           </form>
         </CardContent>
