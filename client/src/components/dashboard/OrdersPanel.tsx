@@ -9,10 +9,13 @@ import { formatCurrency } from "@/lib/currency";
 export function OrdersPanel() {
   const { setSelectedOrder, setShowPaymentModal } = useBarStore();
 
-  const { data: pendingOrders = [], isLoading } = useQuery<OrderWithItems[]>({
+  const { data: pendingOrders, isLoading } = useQuery<OrderWithItems[]>({
     queryKey: ["/api/orders/pending"],
     refetchInterval: 5000, // Refresh every 5 seconds
   });
+
+  // Ensure pendingOrders is always an array
+  const orders = pendingOrders || [];
 
   const handlePayment = (order: OrderWithItems) => {
     setSelectedOrder(order);
@@ -52,18 +55,18 @@ export function OrdersPanel() {
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg text-white">Commandes en Attente</CardTitle>
           <Badge variant="secondary" className="bg-orange-500 text-white">
-            {pendingOrders.length}
+            {orders.length}
           </Badge>
         </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {pendingOrders.length === 0 ? (
+          {orders.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-400">Aucune commande en attente</p>
             </div>
           ) : (
-            pendingOrders.map((order) => (
+            orders.map((order) => (
               <div key={order.id} className="bg-gray-700 p-4 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center space-x-2">

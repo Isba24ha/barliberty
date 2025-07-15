@@ -7,10 +7,13 @@ import { CreditClient } from "@shared/schema";
 import { formatCurrency } from "@/lib/currency";
 
 export function CreditClientsTable() {
-  const { data: creditClients = [], isLoading } = useQuery<CreditClient[]>({
+  const { data: creditClients, isLoading } = useQuery<CreditClient[]>({
     queryKey: ["/api/credit-clients"],
     refetchInterval: 10000,
   });
+
+  // Ensure creditClients is always an array
+  const clients = creditClients || [];
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString("fr-FR");
