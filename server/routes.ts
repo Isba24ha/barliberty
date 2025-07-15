@@ -57,49 +57,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth routes
   app.post("/api/auth/login", async (req, res) => {
-    const { username, password, role } = req.body;
-    
-    // Define user credentials with faster lookup
-    const userCredentials = new Map([
-      // Servers
-      ['rafa', { password: 'Liberty@25%', role: 'server' }],
-      ['filinto', { password: 'Liberty@25%', role: 'server' }],
-      ['junior', { password: 'Liberty@25%', role: 'server' }],
-      ['server-001', { password: 'Liberty@25%', role: 'server' }],
-      // Cashiers
-      ['jose.barros', { password: 'Liberty@25%', role: 'cashier' }],
-      ['milisiana', { password: 'Liberty@25%', role: 'cashier' }],
-      ['cashier-001', { password: 'Liberty@25%', role: 'cashier' }],
-      // Managers
-      ['lucelle', { password: 'Bissau@25%', role: 'manager' }],
-      ['carlmalack', { password: 'Bissau@25%', role: 'manager' }],
-      ['manager', { password: 'Liberty@25%', role: 'manager' }],
-      ['manager-001', { password: 'Liberty@25%', role: 'manager' }],
-    ]);
-    
-    // Fast credential validation
-    const userCreds = userCredentials.get(username);
-    if (!userCreds || userCreds.password !== password || userCreds.role !== role) {
-      return res.status(401).json({ message: "Credenciais inválidas" });
-    }
-    
-    // Get user from cache first, fallback to database
-    let user = userCache.get(username);
-    if (!user) {
-      user = await storage.getUser(username);
-      if (user) {
-        userCache.set(username, user);
+    try {
+      const { username, password, role } = req.body;
+      
+      // Define user credentials with faster lookup
+      const userCredentials = new Map([
+        // Servers
+        ['rafa', { password: 'Liberty@25%', role: 'server' }],
+        ['filinto', { password: 'Liberty@25%', role: 'server' }],
+        ['junior', { password: 'Liberty@25%', role: 'server' }],
+        ['server-001', { password: 'Liberty@25%', role: 'server' }],
+        // Cashiers
+        ['jose.barros', { password: 'Liberty@25%', role: 'cashier' }],
+        ['milisiana', { password: 'Liberty@25%', role: 'cashier' }],
+        ['cashier-001', { password: 'Liberty@25%', role: 'cashier' }],
+        // Managers
+        ['lucelle', { password: 'Bissau@25%', role: 'manager' }],
+        ['carlmalack', { password: 'Bissau@25%', role: 'manager' }],
+        ['manager', { password: 'Liberty@25%', role: 'manager' }],
+        ['manager-001', { password: 'Liberty@25%', role: 'manager' }],
+      ]);
+      
+      // Fast credential validation
+      const userCreds = userCredentials.get(username);
+      if (!userCreds || userCreds.password !== password || userCreds.role !== role) {
+        return res.status(401).json({ message: "Credenciais inválidas" });
       }
+      
+      // Get user from cache first, fallback to database
+      let user = userCache.get(username);
+      if (!user) {
+        user = await storage.getUser(username);
+        if (user) {
+          userCache.set(username, user);
+        }
+      }
+      
+      if (!user) {
+        return res.status(401).json({ message: "Usuário não encontrado" });
+      }
+      
+      // Store user in session with enhanced security
+      (req.session as any).user = user;
+      (req.session as any).loginTime = new Date().toISOString();
+      
+      // Save session explicitly to ensure persistence
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      
+      res.json(user);
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ message: "Erro interno do servidor" });
     }
-    
-    if (!user) {
-      return res.status(401).json({ message: "Usuário não encontrado" });
-    }
-    
-    // Store user in session
-    (req.session as any).user = user;
-    
-    res.json(user);
   });
 
   app.get("/api/auth/user", requireAuth, async (req: any, res) => {
@@ -113,13 +127,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/auth/logout", (req, res) => {
-    req.session.destroy((err) => {
-      if (err) {
-        return res.status(500).json({ message: "Erro ao fazer logout" });
-      }
-      res.clearCookie('connect.sid');
-      res.json({ message: "Logout realizado com sucesso" });
-    });
+    try {
+      req.session.destroy((err) => {
+        if (err) {
+          console.error('Logout error:', err);
+          return res.status(500).json({ message: "Erro ao fazer logout" });
+        }
+        res.clearCookie('connect.sid');
+        res.json({ message: "Logout realizado com sucesso" });
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      res.status(500).json({ message: "Erro ao fazer logout" });
+    }
   });
 
   app.get("/api/auth/logout", (req, res) => {

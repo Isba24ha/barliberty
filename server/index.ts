@@ -7,13 +7,32 @@ import ConnectPgSimple from "connect-pg-simple";
 
 const app = express();
 
-// Improved middleware configuration
+// Check database connection before starting
+async function checkDatabaseConnection() {
+  try {
+    const client = await pool.connect();
+    await client.query('SELECT NOW()');
+    client.release();
+    log('Database connection verified');
+    return true;
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    return false;
+  }
+}
+
+// Enhanced middleware configuration
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
-// Compression middleware for better performance
+// Security headers
 app.use((req, res, next) => {
-  res.set('Cache-Control', 'no-store');
+  res.set({
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block'
+  });
   next();
 });
 
@@ -24,6 +43,10 @@ app.use(session({
     pool: pool,
     tableName: 'sessions',
     createTableIfMissing: true,
+    pruneSessionInterval: 60 * 15, // Clean up sessions every 15 minutes
+    errorLog: (error: any) => {
+      console.error('Session store error:', error);
+    }
   }),
   secret: process.env.SESSION_SECRET || "liberty-bar-management-secret-key-2025",
   resave: false,
@@ -67,35 +90,48 @@ app.use((req, res, next) => {
   next();
 });
 
-// Graceful shutdown handling
-process.on('SIGTERM', () => {
-  log('SIGTERM received, shutting down gracefully');
-  pool.end(() => {
-    log('Database pool closed');
-    process.exit(0);
-  });
-});
-
-process.on('SIGINT', () => {
-  log('SIGINT received, shutting down gracefully');
-  pool.end(() => {
-    log('Database pool closed');
-    process.exit(0);
-  });
-});
-
-// Database connection health check
-async function checkDatabaseConnection() {
-  try {
-    await pool.query('SELECT 1');
-    log('Database connection verified');
-    return true;
-  } catch (error) {
-    log(`Database connection failed: ${error}`);
-    return false;
+// Enhanced error handling middleware
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  console.error('Unhandled error:', err);
+  
+  if (err.code === 'ECONNREFUSED') {
+    return res.status(503).json({ 
+      message: 'Database connection failed',
+      error: 'Service temporarily unavailable'
+    });
   }
-}
+  
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({ 
+      message: 'Validation failed',
+      error: err.message
+    });
+  }
+  
+  res.status(500).json({ 
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  });
+});
 
+// Graceful shutdown handling
+const shutdown = async (signal: string) => {
+  log(`${signal} received, shutting down gracefully`);
+  
+  try {
+    await pool.end();
+    log('Database pool closed');
+    process.exit(0);
+  } catch (error) {
+    console.error('Error during shutdown:', error);
+    process.exit(1);
+  }
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+// Server startup
 (async () => {
   try {
     // Verify database connection before starting server
@@ -107,26 +143,6 @@ async function checkDatabaseConnection() {
     }
 
     const server = await registerRoutes(app);
-
-    // Enhanced error handling middleware
-    app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-
-      // Log error details for debugging
-      log(`Error ${status}: ${message} - ${req.method} ${req.path}`);
-      
-      // Don't expose internal errors in production
-      if (process.env.NODE_ENV === 'production' && status === 500) {
-        res.status(500).json({ message: "Erro interno do servidor" });
-      } else {
-        res.status(status).json({ message });
-      }
-      
-      if (status === 500) {
-        console.error(err);
-      }
-    });
 
     // Setup development or production serving
     if (app.get("env") === "development") {

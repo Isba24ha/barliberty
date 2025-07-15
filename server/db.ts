@@ -16,12 +16,13 @@ if (!process.env.DATABASE_URL) {
 
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  max: 20, // Increased connection pool size
-  min: 5, // Minimum connections to maintain
-  connectionTimeoutMillis: 10000, // Reduced timeout for faster failures
-  idleTimeoutMillis: 30000,
-  acquireTimeoutMillis: 5000, // Timeout for acquiring connection
+  max: 15, // Optimized connection pool size
+  min: 3, // Minimum connections to maintain
+  connectionTimeoutMillis: 8000, // Connection timeout
+  idleTimeoutMillis: 60000, // Idle timeout (1 minute)
+  acquireTimeoutMillis: 3000, // Timeout for acquiring connection
   allowExitOnIdle: false, // Keep connections alive
+  application_name: 'liberty-bar-management'
 });
 
 export const db = drizzle({ client: pool, schema });
