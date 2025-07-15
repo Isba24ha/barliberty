@@ -36,6 +36,8 @@ export function Header() {
       return apiRequest("POST", "/api/auth/logout", {});
     },
     onSuccess: () => {
+      // Clear localStorage session
+      localStorage.removeItem("liberty_session");
       // Clear all cached data
       queryClient.clear();
       // Force redirect to login page with full page reload
@@ -43,6 +45,8 @@ export function Header() {
     },
     onError: (error) => {
       console.error("Logout error:", error);
+      // Clear localStorage session even on error
+      localStorage.removeItem("liberty_session");
       // Force redirect even on error
       window.location.href = "/login";
     }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useBarStore } from "@/store/useBarStore";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -15,6 +15,27 @@ export function OpenSessionModal() {
   const [shiftType, setShiftType] = useState<"morning" | "evening">("morning");
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Auto-detect shift type based on current time
+  const getCurrentShiftType = () => {
+    const hour = new Date().getHours();
+    return hour < 14 ? "morning" : "evening";
+  };
+
+  // Set default shift type based on current time
+  useEffect(() => {
+    setShiftType(getCurrentShiftType());
+  }, []);
+
+  // Listen for auto-open events
+  useEffect(() => {
+    const handleOpenSessionModal = () => {
+      setShowOpenSessionModal(true);
+    };
+    
+    window.addEventListener("openSessionModal", handleOpenSessionModal);
+    return () => window.removeEventListener("openSessionModal", handleOpenSessionModal);
+  }, [setShowOpenSessionModal]);
 
   const openSessionMutation = useMutation({
     mutationFn: async () => {
@@ -41,17 +62,6 @@ export function OpenSessionModal() {
   const handleOpenSession = () => {
     openSessionMutation.mutate();
   };
-
-  // Auto-detect shift type based on current time
-  const getCurrentShiftType = () => {
-    const hour = new Date().getHours();
-    return hour < 14 ? "morning" : "evening";
-  };
-
-  // Set default shift type based on current time
-  useState(() => {
-    setShiftType(getCurrentShiftType());
-  });
 
   return (
     <Dialog open={showOpenSessionModal} onOpenChange={setShowOpenSessionModal}>

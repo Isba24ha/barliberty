@@ -22,27 +22,35 @@ export default function Login() {
       console.log("Attempting login with:", { username, role });
       return apiRequest("POST", "/api/auth/login", credentials);
     },
-    onSuccess: async () => {
-      console.log("Login successful, clearing cache and refetching user data");
+    onSuccess: async (response) => {
+      console.log("Login successful, processing session data");
+      
+      // Get user data from login response
+      const userData = await response.json();
       
       // Clear all queries to reset state
       queryClient.clear();
       
+      // Store session in localStorage
+      const sessionData = {
+        user: userData,
+        timestamp: Date.now(),
+        expiresAt: Date.now() + (8 * 60 * 60 * 1000) // 8 hours
+      };
+      localStorage.setItem("liberty_session", JSON.stringify(sessionData));
+      
       // Immediately refetch the user data to update auth state
       await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
-      
-      // Wait for auth state to update and stabilize
-      await new Promise(resolve => setTimeout(resolve, 200));
       
       toast({
         title: "Login realizado com sucesso",
         description: "Você está agora conectado",
       });
       
-      console.log("Auth state updated, triggering redirection");
+      console.log("Redirecting to dashboard");
       
-      // Force a complete page reload to ensure proper redirection in deployment
-      window.location.reload();
+      // Direct redirection to dashboard
+      setLocation("/");
     },
     onError: (error) => {
       console.error("Login failed:", error);
