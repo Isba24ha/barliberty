@@ -6,10 +6,12 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { Logo } from "@/components/Logo";
+import { useAuth } from "@/hooks/useAuth";
 
 export function Header() {
   const { currentUser, activeSession, setShowSessionModal } = useBarStore();
   const [, setLocation] = useLocation();
+  const { logout } = useAuth();
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
@@ -36,19 +38,19 @@ export function Header() {
       return apiRequest("POST", "/api/auth/logout", {});
     },
     onSuccess: () => {
-      // Clear localStorage session
-      localStorage.removeItem("liberty_session");
+      // Clear localStorage session and auth state
+      logout();
       // Clear all cached data
       queryClient.clear();
-      // Force redirect to login page with full page reload
-      window.location.href = "/login";
+      // Force page reload to reset all state
+      window.location.reload();
     },
     onError: (error) => {
       console.error("Logout error:", error);
       // Clear localStorage session even on error
-      localStorage.removeItem("liberty_session");
-      // Force redirect even on error
-      window.location.href = "/login";
+      logout();
+      // Force page reload to reset all state
+      window.location.reload();
     }
   });
 

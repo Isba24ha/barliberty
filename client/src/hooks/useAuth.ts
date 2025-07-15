@@ -79,6 +79,8 @@ export function useAuth() {
     localStorage.removeItem(SESSION_KEY);
     setIsSessionValid(false);
     setSessionUser(null);
+    // Force the query to refetch to ensure auth state is reset
+    refetch();
   };
 
   const finalUser = isSessionValid ? sessionUser : user;
