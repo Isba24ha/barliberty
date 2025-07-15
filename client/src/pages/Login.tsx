@@ -28,9 +28,6 @@ export default function Login() {
       // Get user data from login response
       const userData = await response.json();
       
-      // Clear all queries to reset state
-      queryClient.clear();
-      
       // Store session in localStorage
       const sessionData = {
         user: userData,
@@ -39,18 +36,17 @@ export default function Login() {
       };
       localStorage.setItem("liberty_session", JSON.stringify(sessionData));
       
-      // Immediately refetch the user data to update auth state
-      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
-      
       toast({
         title: "Login realizado com sucesso",
         description: "Você está agora conectado",
       });
       
-      console.log("Redirecting to dashboard");
+      console.log("Redirecting to dashboard with page reload");
       
-      // Direct redirection to dashboard
-      setLocation("/");
+      // Force page reload to reset all state and properly initialize with new session
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 500);
     },
     onError: (error) => {
       console.error("Login failed:", error);

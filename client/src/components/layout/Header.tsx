@@ -38,19 +38,26 @@ export function Header() {
       return apiRequest("POST", "/api/auth/logout", {});
     },
     onSuccess: () => {
+      console.log("Server logout successful, clearing client state");
       // Clear localStorage session and auth state
       logout();
       // Clear all cached data
       queryClient.clear();
-      // Force page reload to reset all state
-      window.location.reload();
+      // Force page reload to completely reset the application state
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
     },
     onError: (error) => {
       console.error("Logout error:", error);
       // Clear localStorage session even on error
       logout();
-      // Force page reload to reset all state
-      window.location.reload();
+      // Clear all cached data
+      queryClient.clear();
+      // Force page reload to completely reset the application state
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
     }
   });
 

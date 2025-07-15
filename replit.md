@@ -255,6 +255,16 @@ The application follows a monorepo structure with shared TypeScript types and sc
 - Logout system verified: proper session termination with 401 unauthorized after logout
 - Authentication routing conflicts resolved with forced redirection to dashboard
 
+### Logout and Re-login System Fix (July 2025)
+- Fixed JavaScript null reference errors across all components using safe array pattern
+- Added "Déconnexion" button with proper text and icon in header
+- Implemented comprehensive logout flow: server logout → localStorage clearing → query cache clear → page reload
+- Enhanced logout functionality to properly clear authentication state and redirect to login
+- Fixed re-login issues after logout by improving session management and page refresh handling
+- Login credentials confirmed working: milisiana/Liberty@25% for cashier role
+- Server authentication working correctly with proper session management
+- All API endpoints return 401 unauthorized after logout as expected
+
 ### Frontend Redirection Fix (July 2025)
 - Resolved complex wouter routing configuration causing 404 errors at root URL
 - Simplified authentication routing to direct component rendering instead of nested Switch/Route
