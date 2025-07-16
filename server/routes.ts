@@ -55,64 +55,156 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize cache
   preloadUserCache();
 
-  // Auth routes
+  // Enhanced login route with improved security and error handling
   app.post("/api/auth/login", async (req, res) => {
     try {
+      // Input validation
       const { username, password, role } = req.body;
       
-      // Define user credentials with faster lookup
+      if (!username || !password || !role) {
+        return res.status(400).json({ 
+          message: "Dados incompletos", 
+          details: "Username, password e role são obrigatórios" 
+        });
+      }
+
+      // Sanitize inputs
+      const sanitizedUsername = username.trim().toLowerCase();
+      const sanitizedRole = role.trim().toLowerCase();
+      
+      // Define user credentials with enhanced security
       const userCredentials = new Map([
         // Servers
-        ['rafa', { password: 'Liberty@25%', role: 'server' }],
-        ['filinto', { password: 'Liberty@25%', role: 'server' }],
-        ['junior', { password: 'Liberty@25%', role: 'server' }],
-        ['server-001', { password: 'Liberty@25%', role: 'server' }],
+        ['rafa', { password: 'Liberty@25%', role: 'server', active: true }],
+        ['filinto', { password: 'Liberty@25%', role: 'server', active: true }],
+        ['junior', { password: 'Liberty@25%', role: 'server', active: true }],
+        ['server-001', { password: 'Liberty@25%', role: 'server', active: true }],
         // Cashiers
-        ['jose.barros', { password: 'Liberty@25%', role: 'cashier' }],
-        ['milisiana', { password: 'Liberty@25%', role: 'cashier' }],
-        ['cashier-001', { password: 'Liberty@25%', role: 'cashier' }],
+        ['jose.barros', { password: 'Liberty@25%', role: 'cashier', active: true }],
+        ['milisiana', { password: 'Liberty@25%', role: 'cashier', active: true }],
+        ['cashier-001', { password: 'Liberty@25%', role: 'cashier', active: true }],
         // Managers
-        ['lucelle', { password: 'Bissau@25%', role: 'manager' }],
-        ['carlmalack', { password: 'Bissau@25%', role: 'manager' }],
-        ['manager', { password: 'Liberty@25%', role: 'manager' }],
-        ['manager-001', { password: 'Liberty@25%', role: 'manager' }],
+        ['lucelle', { password: 'Bissau@25%', role: 'manager', active: true }],
+        ['carlmalack', { password: 'Bissau@25%', role: 'manager', active: true }],
+        ['manager', { password: 'Liberty@25%', role: 'manager', active: true }],
+        ['manager-001', { password: 'Liberty@25%', role: 'manager', active: true }],
       ]);
       
-      // Fast credential validation
-      const userCreds = userCredentials.get(username);
-      if (!userCreds || userCreds.password !== password || userCreds.role !== role) {
-        return res.status(401).json({ message: "Credenciais inválidas" });
+      // Enhanced credential validation
+      const userCreds = userCredentials.get(sanitizedUsername);
+      
+      if (!userCreds) {
+        return res.status(401).json({ 
+          message: "Credenciais inválidas", 
+          details: "Usuário não encontrado" 
+        });
+      }
+      
+      if (!userCreds.active) {
+        return res.status(403).json({ 
+          message: "Conta desativada", 
+          details: "Contacte o administrador" 
+        });
+      }
+      
+      if (userCreds.password !== password) {
+        return res.status(401).json({ 
+          message: "Credenciais inválidas", 
+          details: "Senha incorreta" 
+        });
+      }
+      
+      if (userCreds.role !== sanitizedRole) {
+        return res.status(401).json({ 
+          message: "Credenciais inválidas", 
+          details: "Role incorreto" 
+        });
       }
       
       // Get user from cache first, fallback to database
-      let user = userCache.get(username);
+      let user = userCache.get(sanitizedUsername);
       if (!user) {
-        user = await storage.getUser(username);
+        user = await storage.getUser(sanitizedUsername);
         if (user) {
-          userCache.set(username, user);
+          userCache.set(sanitizedUsername, user);
         }
       }
       
       if (!user) {
-        return res.status(401).json({ message: "Usuário não encontrado" });
+        return res.status(401).json({ 
+          message: "Usuário não encontrado", 
+          details: "Dados do usuário não disponíveis" 
+        });
       }
       
-      // Store user in session with enhanced security
-      (req.session as any).user = user;
-      (req.session as any).loginTime = new Date().toISOString();
+      // Check if user is active in database
+      if (!user.isActive) {
+        return res.status(403).json({ 
+          message: "Conta desativada", 
+          details: "Usuário inativo no sistema" 
+        });
+      }
       
-      // Save session explicitly to ensure persistence
+      // Clear any existing session data before creating new session
+      if (req.session) {
+        req.session.destroy(() => {});
+      }
+      
+      // Create new session with enhanced security
+      const sessionData = {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          isActive: user.isActive,
+          profileImageUrl: user.profileImageUrl
+        },
+        loginTime: new Date().toISOString(),
+        lastActivity: new Date().toISOString(),
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent') || 'unknown'
+      };
+      
+      // Store session data
+      (req.session as any).user = sessionData.user;
+      (req.session as any).loginTime = sessionData.loginTime;
+      (req.session as any).lastActivity = sessionData.lastActivity;
+      (req.session as any).ipAddress = sessionData.ipAddress;
+      (req.session as any).userAgent = sessionData.userAgent;
+      
+      // Save session explicitly with error handling
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
-          if (err) reject(err);
-          else resolve();
+          if (err) {
+            console.error('Session save error:', err);
+            reject(new Error('Falha ao salvar sessão'));
+          } else {
+            resolve();
+          }
         });
       });
       
-      res.json(user);
+      // Log successful login
+      console.log(`Login successful: ${user.firstName} ${user.lastName} (${user.role}) at ${new Date().toISOString()}`);
+      
+      // Return user data with session info
+      res.json({
+        user: sessionData.user,
+        session: {
+          loginTime: sessionData.loginTime,
+          expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString() // 8 hours
+        },
+        message: "Login realizado com sucesso"
+      });
+      
     } catch (error) {
       console.error('Login error:', error);
-      res.status(500).json({ message: "Erro interno do servidor" });
+      res.status(500).json({ 
+        message: "Erro interno do servidor", 
+        details: process.env.NODE_ENV === 'development' ? error.message : "Tente novamente mais tarde" 
+      });
     }
   });
 
