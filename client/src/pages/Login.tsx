@@ -108,11 +108,9 @@ export default function Login() {
         
         console.log(`Redirecting to ${dashboardType} dashboard:`, redirectPath);
         
-        // Use client-side routing since session is now properly maintained
-        setTimeout(() => {
-          setLocation(redirectPath);
-          console.log("Client-side navigation completed to:", redirectPath);
-        }, 300); // Shorter delay for smoother UX
+        // Use immediate client-side routing with localStorage persistence
+        setLocation(redirectPath);
+        console.log("Direct client-side navigation completed to:", redirectPath);
         
       } catch (error) {
         console.error("Error processing login response:", error);

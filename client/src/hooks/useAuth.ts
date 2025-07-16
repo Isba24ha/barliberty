@@ -57,7 +57,7 @@ export function useAuth() {
     refetchOnMount: true,
     staleTime: 1 * 60 * 1000, // 1 minute for more responsive auth
     gcTime: 5 * 60 * 1000, // 5 minutes
-    enabled: true, // Always validate with server to ensure session persistence
+    enabled: !isSessionValid, // Skip server validation if we have valid local session
   });
 
   // Update localStorage when server auth succeeds
