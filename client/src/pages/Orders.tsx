@@ -620,7 +620,10 @@ export default function Orders() {
                         </Select>
                         
                         <Button
-                          onClick={() => setShowNewClientModal(true)}
+                          onClick={() => {
+                            console.log("Novo Cliente button clicked");
+                            setShowNewClientModal(true);
+                          }}
                           variant="outline"
                           className="w-full border-orange-500 text-orange-400 hover:bg-orange-500/20"
                         >

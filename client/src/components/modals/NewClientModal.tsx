@@ -32,6 +32,8 @@ interface NewClientModalProps {
 export function NewClientModal({ open, onOpenChange, onClientCreated }: NewClientModalProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  
+  console.log("NewClientModal render - open:", open);
 
   const form = useForm<NewClientForm>({
     resolver: zodResolver(newClientSchema),
