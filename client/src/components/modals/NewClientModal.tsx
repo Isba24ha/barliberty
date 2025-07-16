@@ -16,10 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 const newClientSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
-  phone: z.string().optional(),
+  phone: z.string().min(1, "Telefone é obrigatório"),
   address: z.string().optional(),
   notes: z.string().optional(),
-  creditLimit: z.number().min(0, "Limite de crédito deve ser positivo").default(0),
 });
 
 type NewClientForm = z.infer<typeof newClientSchema>;
@@ -42,16 +41,18 @@ export function NewClientModal({ open, onOpenChange, onClientCreated }: NewClien
       phone: "",
       address: "",
       notes: "",
-      creditLimit: 0,
     },
   });
 
   const createClientMutation = useMutation({
     mutationFn: async (data: NewClientForm) => {
+      console.log("Sending client data:", data);
       return apiRequest("POST", "/api/credit-clients", {
-        ...data,
-        totalCredit: "0.00",
-        creditLimit: data.creditLimit.toString(),
+        name: data.name,
+        phone: data.phone,
+        email: data.email || null,
+        address: data.address || null,
+        notes: data.notes || null,
       });
     },
     onSuccess: (data) => {
@@ -151,29 +152,7 @@ export function NewClientModal({ open, onOpenChange, onClientCreated }: NewClien
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="creditLimit"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm font-medium text-gray-300">
-                    Limite de Crédito
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      className="bg-gray-700 border-gray-600 text-white"
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+
 
             <FormField
               control={form.control}
