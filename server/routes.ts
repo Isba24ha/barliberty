@@ -552,12 +552,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/credit-clients", requireAuth, requireRole(["cashier", "server"]), async (req, res) => {
     try {
-      const clientData = insertCreditClientSchema.parse(req.body);
+      console.log("Creating credit client with data:", req.body);
+      
+      // Ensure proper data structure
+      const clientData = {
+        name: req.body.name,
+        phone: req.body.phone,
+        email: req.body.email || null,
+        address: req.body.address || null,
+        notes: req.body.notes || null,
+        totalCredit: "0.00",
+        isActive: true,
+      };
+      
+      console.log("Processed client data:", clientData);
+      
       const client = await storage.createCreditClient(clientData);
+      console.log("Client created successfully:", client);
       res.json(client);
     } catch (error) {
       console.error("Error creating credit client:", error);
-      res.status(500).json({ message: "Erreur lors de la création du client à crédit" });
+      console.error("Error details:", error.message);
+      res.status(500).json({ 
+        message: "Erreur lors de la création du client à crédit",
+        details: error.message 
+      });
     }
   });
 
@@ -741,14 +760,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Update order status to completed
-      await storage.updateOrder(parseInt(orderId), { status: "completed" });
-      
-      // Get the order to find the table
+      // Get the order to reduce stock for all items
       const order = await storage.getOrder(parseInt(orderId));
-      if (order && order.tableId) {
-        // Free the table
-        await storage.updateTableStatus(order.tableId, "free");
+      if (order) {
+        // Reduce stock for each item in the order
+        for (const item of order.items) {
+          const product = await storage.getProduct(item.productId);
+          if (product) {
+            const newStock = Math.max(0, product.stockQuantity - item.quantity);
+            await storage.updateProduct(item.productId, { stockQuantity: newStock });
+            console.log(`Stock reduced for ${product.name}: ${product.stockQuantity} → ${newStock} (sold ${item.quantity})`);
+          }
+        }
+        
+        // Update order status to completed
+        await storage.updateOrder(parseInt(orderId), { status: "completed" });
+        
+        // Free the table if it exists
+        if (order.tableId) {
+          await storage.updateTableStatus(order.tableId, "free");
+        }
       }
 
       res.json(payment);
@@ -839,16 +870,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all sessions for the selected date (only real sessions with actual data)
       const sessions = await storage.getSessionsByPeriod("daily", date);
       
-      // Calculate sales by shift from real sessions data
-      const morningSales = sessions
-        .filter(s => s.shiftType === "morning" && s.totalSales)
-        .reduce((sum, s) => sum + parseFloat(s.totalSales || "0"), 0);
+      // Calculate daily sales by shift from payments table for accurate results
+      const targetDate = new Date(date);
+      const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+      const endOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate() + 1);
       
-      const eveningSales = sessions
-        .filter(s => s.shiftType === "evening" && s.totalSales)
-        .reduce((sum, s) => sum + parseFloat(s.totalSales || "0"), 0);
-
-      const totalSales = morningSales + eveningSales;
+      // Get all payments for the selected date
+      const todayPayments = await db
+        .select({
+          amount: payments.amount,
+          sessionId: payments.sessionId,
+        })
+        .from(payments)
+        .leftJoin(barSessions, eq(payments.sessionId, barSessions.id))
+        .where(
+          and(
+            gte(payments.createdAt, startOfDay),
+            lt(payments.createdAt, endOfDay)
+          )
+        );
+      
+      // Get session shift types for the date
+      const sessionShifts = await db
+        .select({
+          id: barSessions.id,
+          shiftType: barSessions.shiftType,
+        })
+        .from(barSessions)
+        .where(
+          and(
+            gte(barSessions.createdAt, startOfDay),
+            lt(barSessions.createdAt, endOfDay)
+          )
+        );
+      
+      const sessionShiftMap = new Map(sessionShifts.map(s => [s.id, s.shiftType]));
+      
+      let morningSales = 0;
+      let eveningSales = 0;
+      let totalSales = 0;
+      
+      for (const payment of todayPayments) {
+        const amount = parseFloat(payment.amount || "0");
+        const shiftType = sessionShiftMap.get(payment.sessionId);
+        
+        totalSales += amount;
+        
+        if (shiftType === "morning") {
+          morningSales += amount;
+        } else if (shiftType === "evening") {
+          eveningSales += amount;
+        }
+      }
 
       // Get active credits
       const creditClients = await storage.getAllCreditClients();
@@ -863,7 +936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get product statistics
       const products = await storage.getAllProducts();
       const lowStockProducts = products.filter(p => 
-        p.stock !== null && p.minStock !== null && p.stock <= p.minStock
+        p.stockQuantity !== null && p.minStockLevel !== null && p.stockQuantity <= p.minStockLevel
       ).length;
 
       // Get top products from actual sales data

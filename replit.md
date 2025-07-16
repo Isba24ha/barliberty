@@ -375,3 +375,13 @@ The application follows a monorepo structure with shared TypeScript types and sc
 - **Role-Based Routing**: Managers get `/manager` path with `management` type, cashiers/servers get `/dashboard` path with `operational` type
 - **Session Authentication**: Endpoint properly validates authenticated sessions and returns 401 for unauthenticated requests
 - **Integration Ready**: Endpoint available for frontend components to determine correct dashboard redirection based on user role
+
+### Critical Business Logic Fixes (July 2025)
+- **Stock Reduction Implementation**: Fixed automatic stock reduction during sales - stock now properly decreases when payments are processed
+- **Manager Statistics Fix**: Corrected statistics calculation by using payments table instead of session data for accurate sales reporting
+- **Real-Time Stock Tracking**: Stock levels now update immediately after each sale and are visible to cashiers during order creation
+- **Credit Client Creation Fix**: Resolved credit client creation errors with proper data validation and error handling
+- **Session Statistics Enhancement**: Sessions now store final sales totals and transaction counts when closed
+- **Database Field Mapping**: Fixed stockQuantity and minStockLevel field mappings to match actual database schema
+- **Payment-Based Analytics**: Manager dashboard now shows accurate morning/evening sales based on actual payment transactions
+- **Stock Status Indicators**: Low stock alerts now properly calculated using stockQuantity vs minStockLevel comparisons

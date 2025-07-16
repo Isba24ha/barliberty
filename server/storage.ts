@@ -147,9 +147,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async endSession(sessionId: number): Promise<void> {
+    // Calculate final stats before closing
+    const stats = await this.getSessionStats(sessionId);
+    
     await db
       .update(barSessions)
-      .set({ isActive: false, endTime: new Date() })
+      .set({ 
+        isActive: false, 
+        endTime: new Date(),
+        totalSales: stats.totalSales,
+        transactionCount: stats.transactionCount 
+      })
       .where(eq(barSessions.id, sessionId));
   }
 
