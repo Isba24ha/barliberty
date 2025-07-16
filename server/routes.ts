@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
 import { z } from "zod";
 import {
   insertBarSessionSchema,
@@ -12,7 +13,10 @@ import {
   insertOrderItemSchema,
   insertPaymentSchema,
   insertAbsenceSchema,
+  barSessions,
+  payments,
 } from "@shared/schema";
+import { and, eq, gte, lt } from "drizzle-orm";
 
 // Enhanced auth middleware for production
 const requireAuth = (req: any, res: any, next: any) => {
@@ -652,13 +656,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Add items to the order
       for (const item of items) {
-        await storage.addOrderItem({
+        // Get product to retrieve price
+        const product = await storage.getProduct(item.productId);
+        if (!product) {
+          throw new Error(`Product with ID ${item.productId} not found`);
+        }
+        
+        const unitPrice = parseFloat(product.price);
+        console.log(`Creating order item - Product: ${product.name}, Price: ${product.price}, UnitPrice: ${unitPrice}, Quantity: ${item.quantity}`);
+        
+        const orderItem = {
           orderId: order.id,
           productId: item.productId,
           quantity: item.quantity,
-          unitPrice: item.price,
-          totalPrice: (parseFloat(item.price) * item.quantity).toFixed(2),
-        });
+          unitPrice: unitPrice.toFixed(2),
+          totalPrice: (unitPrice * item.quantity).toFixed(2),
+        };
+        
+        console.log('Order item data:', orderItem);
+        await storage.addOrderItem(orderItem);
       }
 
       // Update table status
