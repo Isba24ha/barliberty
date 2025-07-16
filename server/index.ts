@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import cors from "cors";
+import crypto from "crypto";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { pool } from "./db";
@@ -29,17 +30,19 @@ const corsOptions = {
     // Define allowed origins based on environment
     const allowedOrigins = isProduction 
       ? [
-          process.env.FRONTEND_URL || 'https://liberty-bar-management.replit.app',
+          process.env.FRONTEND_URL,
+          process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : null,
           'https://liberty-bar-management.replit.app',
           // Add your custom domain here when deployed
-        ]
+        ].filter(Boolean) // Remove null values
       : [
           'http://localhost:5000',
           'http://localhost:3000',
           'http://127.0.0.1:5000',
           'http://127.0.0.1:3000',
           // Add the current Replit preview URL
-          /https:\/\/.*\.replit\.dev$/
+          /https:\/\/.*\.replit\.dev$/,
+          /https:\/\/.*\.replit\.app$/
         ];
     
     // Check if origin matches any allowed origin or pattern
@@ -87,6 +90,15 @@ async function checkDatabaseConnection() {
   }
 }
 
+// Log environment variables for production debugging
+if (process.env.NODE_ENV === 'production') {
+  log(`Environment variables check:`);
+  log(`FRONTEND_URL: ${process.env.FRONTEND_URL || 'NOT SET'}`);
+  log(`REPLIT_DOMAIN: ${process.env.REPLIT_DOMAIN || 'NOT SET'}`);
+  log(`DATABASE_URL: ${process.env.DATABASE_URL ? 'SET' : 'NOT SET'}`);
+  log(`SESSION_SECRET: ${process.env.SESSION_SECRET ? 'SET' : 'NOT SET'}`);
+}
+
 // Enhanced middleware configuration
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
@@ -125,6 +137,14 @@ app.use(session({
     maxAge: 8 * 60 * 60 * 1000, // 8 hours to match client session
     sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-origin in production
     domain: isProduction ? undefined : undefined // Let browser handle domain
+  },
+  // Add production environment variable logging
+  genid: () => {
+    const sessionId = crypto.randomUUID();
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Generated new session ID:', sessionId);
+    }
+    return sessionId;
   }
 }));
 

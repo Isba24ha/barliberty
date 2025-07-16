@@ -14,13 +14,41 @@ import {
   insertAbsenceSchema,
 } from "@shared/schema";
 
-// Simple auth middleware for development
+// Enhanced auth middleware for production
 const requireAuth = (req: any, res: any, next: any) => {
-  if (!(req.session as any)?.user) {
-    return res.status(401).json({ message: "Não autorizado" });
+  try {
+    const session = req.session as any;
+    
+    // Check if session exists and has user data
+    if (!session || !session.user) {
+      return res.status(401).json({ 
+        message: "Não autorizado",
+        details: "Sessão inválida ou expirada" 
+      });
+    }
+
+    // Validate user data integrity
+    if (!session.user.id || !session.user.role) {
+      return res.status(401).json({ 
+        message: "Não autorizado",
+        details: "Dados de usuário inválidos" 
+      });
+    }
+
+    // Update last activity for session tracking
+    session.lastActivity = new Date().toISOString();
+    
+    // Attach user to request object
+    req.user = session.user;
+    
+    next();
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return res.status(500).json({ 
+      message: "Erro de autenticação",
+      details: process.env.NODE_ENV === 'development' ? error.message : "Erro interno" 
+    });
   }
-  req.user = (req.session as any).user;
-  next();
 };
 
 const requireRole = (roles: string[]) => (req: any, res: any, next: any) => {
@@ -189,11 +217,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/auth/user", requireAuth, async (req: any, res) => {
     try {
-      // Return cached user from session, no need to query database
-      res.json(req.user);
+      // Return comprehensive user data from session
+      const user = req.user;
+      
+      // Validate user data before returning
+      if (!user || !user.id || !user.role) {
+        return res.status(401).json({ 
+          message: "Não autorizado",
+          details: "Dados de usuário inválidos" 
+        });
+      }
+
+      // Return user data for authenticated users
+      res.json({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isActive: user.isActive,
+        profileImageUrl: user.profileImageUrl,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      });
     } catch (error) {
       console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Erro ao buscar usuário" });
+      res.status(500).json({ 
+        message: "Erro ao buscar usuário",
+        details: process.env.NODE_ENV === 'development' ? error.message : "Erro interno" 
+      });
     }
   });
 
