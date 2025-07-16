@@ -132,10 +132,10 @@ app.use(session({
   rolling: true, // Reset expiration on activity
   name: 'liberty.session', // Custom session name
   cookie: {
-    secure: false, // Set to false for development even in production mode
+    secure: false, // Set to false for development
     httpOnly: true,
     maxAge: 8 * 60 * 60 * 1000, // 8 hours to match client session
-    sameSite: 'lax', // Use 'lax' for same-origin requests in development
+    sameSite: 'lax', // Use 'lax' for same-origin requests
     domain: undefined, // Let browser handle domain
     path: '/' // Ensure cookie is available for all paths
   },

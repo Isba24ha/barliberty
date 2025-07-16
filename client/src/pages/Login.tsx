@@ -108,10 +108,10 @@ export default function Login() {
         
         console.log(`Redirecting to ${dashboardType} dashboard:`, redirectPath);
         
-        // Use client-side routing with proper navigation
+        // Force page refresh to ensure proper session synchronization with cookies
         setTimeout(() => {
-          setLocation(redirectPath);
-          console.log("Client-side navigation completed to:", redirectPath);
+          window.location.href = redirectPath;
+          console.log("Navigation completed with page refresh to:", redirectPath);
         }, 500); // Slightly longer delay for better UX
         
       } catch (error) {

@@ -180,6 +180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error('Session save error:', err);
             reject(new Error('Falha ao salvar sessão'));
           } else {
+            console.log('Session saved successfully for user:', user.id);
             resolve();
           }
         });
