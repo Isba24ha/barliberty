@@ -34,7 +34,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { User } from "@shared/schema";
+import type { User, CreditClient } from "@shared/schema";
 
 interface ManagerStats {
   dailySales: {
@@ -71,6 +71,11 @@ export default function ManagerDashboard() {
   const { data: managerStats, isLoading, refetch } = useQuery<ManagerStats>({
     queryKey: ["/api/manager/stats/daily", selectedDate],
     refetchInterval: 30000,
+  });
+
+  const { data: creditClients } = useQuery<CreditClient[]>({
+    queryKey: ["/api/credit-clients"],
+    refetchInterval: 10000,
   });
 
   const { data: users = [] } = useQuery<User[]>({
@@ -344,11 +349,12 @@ export default function ManagerDashboard() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5 bg-gray-800 border-gray-700">
+        <TabsList className="grid w-full grid-cols-6 bg-gray-800 border-gray-700">
           <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
           <TabsTrigger value="sales">Ventes</TabsTrigger>
           <TabsTrigger value="users">Utilisateurs</TabsTrigger>
           <TabsTrigger value="inventory">Stock</TabsTrigger>
+          <TabsTrigger value="credits">Clients Crédit</TabsTrigger>
           <TabsTrigger value="reports">Rapports</TabsTrigger>
         </TabsList>
 
@@ -511,6 +517,47 @@ export default function ManagerDashboard() {
               <p className="text-gray-400 text-center py-8">
                 Fonctionnalité de gestion de stock en cours de développement
               </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Credits Tab */}
+        <TabsContent value="credits" className="space-y-4">
+          <Card className="bg-gray-800 border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center">
+                <Users className="w-5 h-5 mr-2" />
+                Gestion des clients crédit
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {creditClients && creditClients.length > 0 ? (
+                  <div className="grid gap-4">
+                    {creditClients.map((client) => (
+                      <div key={client.id} className="bg-gray-700 p-4 rounded-lg flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="text-white font-medium">{client.name}</h4>
+                          <p className="text-sm text-gray-400">{client.email}</p>
+                          <p className="text-sm text-gray-400">{client.phone}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-orange-400">
+                            {formatCurrency(client.totalCredit)}
+                          </p>
+                          <p className="text-sm text-gray-400">
+                            {client.isActive ? "Actif" : "Inactif"}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-400 text-center py-8">
+                    Aucun client crédit trouvé
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

@@ -177,27 +177,17 @@ export class DatabaseStorage implements IStorage {
       };
     }
 
-    // Calculate total sales from completed orders during this session
+    // Calculate total sales from payments during this session
     const totalSalesResult = await db
-      .select({ total: sum(orders.totalAmount) })
-      .from(orders)
-      .where(
-        and(
-          eq(orders.sessionId, sessionId),
-          eq(orders.status, "completed")
-        )
-      );
+      .select({ total: sum(sql<number>`CAST(${payments.amount} AS NUMERIC)`) })
+      .from(payments)
+      .where(eq(payments.sessionId, sessionId));
 
-    // Count transactions (completed orders) during this session
+    // Count transactions (payments) during this session
     const transactionCountResult = await db
       .select({ count: count() })
-      .from(orders)
-      .where(
-        and(
-          eq(orders.sessionId, sessionId),
-          eq(orders.status, "completed")
-        )
-      );
+      .from(payments)
+      .where(eq(payments.sessionId, sessionId));
 
     const totalTablesResult = await db.select({ count: count() }).from(tables);
     const occupiedTablesResult = await db

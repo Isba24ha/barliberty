@@ -958,15 +958,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get top products from actual sales data
       const topProducts = await storage.getTopProductsByDate(date);
 
-      // Get session history
-      const sessionHistory = sessions.slice(0, 10).map(s => ({
-        id: s.id,
-        date: new Date(s.createdAt!).toLocaleDateString("pt-PT"),
-        shift: s.shiftType === "morning" ? "Matin" : "Soir",
-        user: s.user?.firstName + " " + s.user?.lastName,
-        sales: s.totalSales || "0.00",
-        transactions: s.transactionCount || 0,
-      }));
+      // Get session history with real payment data
+      const sessionHistory = await Promise.all(
+        sessions.slice(0, 10).map(async (s) => {
+          // Get payments for this session
+          const sessionPayments = await db
+            .select({
+              amount: payments.amount,
+            })
+            .from(payments)
+            .where(eq(payments.sessionId, s.id));
+          
+          const sessionSales = sessionPayments.reduce(
+            (sum, payment) => sum + parseFloat(payment.amount || "0"),
+            0
+          );
+          
+          return {
+            id: s.id,
+            date: new Date(s.createdAt!).toLocaleDateString("pt-PT"),
+            shift: s.shiftType === "morning" ? "Matin" : "Soir",
+            user: s.user?.firstName + " " + s.user?.lastName,
+            sales: sessionSales.toFixed(2),
+            transactions: sessionPayments.length,
+          };
+        })
+      );
 
       const managerStats = {
         dailySales: {
