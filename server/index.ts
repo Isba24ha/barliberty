@@ -37,13 +37,32 @@ const corsOptions = {
           'http://localhost:5000',
           'http://localhost:3000',
           'http://127.0.0.1:5000',
-          'http://127.0.0.1:3000'
+          'http://127.0.0.1:3000',
+          // Add the current Replit preview URL
+          /https:\/\/.*\.replit\.dev$/
         ];
     
-    if (allowedOrigins.includes(origin)) {
+    // Check if origin matches any allowed origin or pattern
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return origin === allowedOrigin;
+      } else if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      // In development, be more permissive
+      if (!isProduction) {
+        console.log('CORS: Allowing origin in development:', origin);
+        callback(null, true);
+      } else {
+        console.log('CORS: Blocking origin:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
     }
   },
   credentials: true, // Allow cookies to be sent

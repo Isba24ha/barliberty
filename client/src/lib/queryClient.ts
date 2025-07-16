@@ -4,15 +4,8 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 const getBaseUrl = () => {
   if (typeof window === 'undefined') return ''; // Server-side rendering
   
-  const isProduction = import.meta.env.PROD;
-  
-  if (isProduction) {
-    // In production, use the current host
-    return window.location.origin;
-  } else {
-    // In development, use localhost
-    return 'http://localhost:5000';
-  }
+  // In development and production, use the current host since we're serving from the same port
+  return window.location.origin;
 };
 
 async function throwIfResNotOk(res: Response) {
