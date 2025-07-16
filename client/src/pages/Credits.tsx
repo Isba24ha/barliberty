@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { NewClientModal } from "@/components/modals/NewClientModal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CreditClient } from "@shared/schema";
 import { Plus, Search, DollarSign, Calendar, User, CreditCard, Banknote, Smartphone, Minus } from "lucide-react";
@@ -21,6 +22,7 @@ export default function Credits() {
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "mobile_money">("cash");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showNewClientModal, setShowNewClientModal] = useState(false);
   const { toast } = useToast();
 
   const { data: creditClients, isLoading } = useQuery<CreditClient[]>({
@@ -81,6 +83,15 @@ export default function Credits() {
     setPaymentMethod("cash");
     setPhoneNumber("");
     setShowPaymentModal(false);
+  };
+
+  const handleClientCreated = (client: CreditClient) => {
+    queryClient.invalidateQueries({ queryKey: ["/api/credit-clients"] });
+    setShowNewClientModal(false);
+    toast({
+      title: "Sucesso",
+      description: `Cliente ${client.name} criado com sucesso`,
+    });
   };
 
   const handlePayment = () => {
@@ -157,7 +168,10 @@ export default function Credits() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-white">{PT.credits.title}</h2>
-        <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+        <Button 
+          onClick={() => setShowNewClientModal(true)}
+          className="bg-orange-500 hover:bg-orange-600 text-white"
+        >
           <Plus className="w-4 h-4 mr-2" />
           Novo Cliente
         </Button>
@@ -441,6 +455,13 @@ export default function Credits() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* New Client Modal */}
+      <NewClientModal
+        open={showNewClientModal}
+        onOpenChange={setShowNewClientModal}
+        onClientCreated={handleClientCreated}
+      />
     </div>
   );
 }
