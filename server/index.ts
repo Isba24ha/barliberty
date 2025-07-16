@@ -132,19 +132,16 @@ app.use(session({
   rolling: true, // Reset expiration on activity
   name: 'liberty.session', // Custom session name
   cookie: {
-    secure: isProduction, // Use HTTPS in production
+    secure: false, // Set to false for development even in production mode
     httpOnly: true,
     maxAge: 8 * 60 * 60 * 1000, // 8 hours to match client session
-    sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-origin in production
-    domain: isProduction ? undefined : undefined // Let browser handle domain
+    sameSite: 'lax', // Use 'lax' for same-origin requests in development
+    domain: undefined, // Let browser handle domain
+    path: '/' // Ensure cookie is available for all paths
   },
-  // Add production environment variable logging
+  // Generate session ID without excessive logging
   genid: () => {
-    const sessionId = crypto.randomUUID();
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Generated new session ID:', sessionId);
-    }
-    return sessionId;
+    return crypto.randomUUID();
   }
 }));
 
