@@ -169,11 +169,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       (req.session as any).user = user;
       (req.session as any).loginTime = new Date().toISOString();
+      (req.session as any).expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
       (req.session as any).lastActivity = new Date().toISOString();
       (req.session as any).ipAddress = req.ip;
       (req.session as any).userAgent = req.get('User-Agent') || 'unknown';
       
-      // Save session explicitly to ensure persistence
+      // Save session explicitly to ensure persistence BEFORE sending response
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
           if (err) {
@@ -189,8 +190,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log successful login
       console.log(`Login successful: ${user.firstName} ${user.lastName} (${user.role}) at ${new Date().toISOString()}`);
       
-      // Return enhanced user data
-      res.json({
+      // Return enhanced user data ONLY after session is saved
+      return res.json({
         user: {
           id: user.id,
           email: user.email,
@@ -201,8 +202,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           profileImageUrl: user.profileImageUrl
         },
         session: {
-          loginTime: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString() // 8 hours
+          loginTime: (req.session as any).loginTime,
+          expiresAt: (req.session as any).expiresAt || new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString()
         },
         message: "Login realizado com sucesso"
       });
