@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import cors from "cors";
 import crypto from "crypto";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { pool } from "./db";
@@ -102,6 +103,7 @@ if (process.env.NODE_ENV === 'production') {
 // Enhanced middleware configuration
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+app.use(cookieParser()); // Add cookie parser middleware
 
 // Security headers
 app.use((req, res, next) => {
@@ -114,9 +116,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configure session with PostgreSQL store for better performance
+// Configure session with simplified settings for debugging
 const PgSession = ConnectPgSimple(session);
-app.use(session({
+
+const sessionConfig = {
   store: new PgSession({
     pool: pool,
     tableName: 'sessions',
@@ -130,20 +133,31 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   rolling: true, // Reset expiration on activity
-  name: 'liberty.session', // Custom session name
+  name: 'liberty.session', // Use custom session name
   cookie: {
     secure: false, // Set to false for development
-    httpOnly: true,
+    httpOnly: false, // Set to false for debugging cookie issues
     maxAge: 8 * 60 * 60 * 1000, // 8 hours to match client session
-    sameSite: 'lax', // Use 'lax' for same-origin requests
-    domain: undefined, // Let browser handle domain
+    sameSite: 'lax', // Back to 'lax' for same-origin requests
     path: '/' // Ensure cookie is available for all paths
-  },
-  // Generate session ID without excessive logging
-  genid: () => {
-    return crypto.randomUUID();
   }
-}));
+};
+
+console.log('Session configuration:', JSON.stringify(sessionConfig, null, 2));
+app.use(session(sessionConfig));
+
+// Session debugging middleware
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    console.log(`[Session Debug] ${req.method} ${req.path}`);
+    console.log(`[Session Debug] Session ID: ${req.sessionID || 'No session ID'}`);
+    console.log(`[Session Debug] Session exists: ${!!req.session}`);
+    console.log(`[Session Debug] User in session: ${req.session?.user?.id || 'No user'}`);
+    console.log(`[Session Debug] Cookies: ${JSON.stringify(req.cookies)}`);
+    console.log(`[Session Debug] Headers: ${JSON.stringify(req.headers.cookie)}`);
+  }
+  next();
+});
 
 app.use((req, res, next) => {
   const start = Date.now();
