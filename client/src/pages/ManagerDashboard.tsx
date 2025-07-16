@@ -26,7 +26,8 @@ import {
   Edit,
   Trash2
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { formatCurrency } from "@/lib/currency";
 import { PT } from "@/lib/i18n";
 import { useForm } from "react-hook-form";
@@ -65,8 +66,23 @@ interface ManagerStats {
 }
 
 export default function ManagerDashboard() {
+  const [location] = useLocation();
   const [selectedPeriod, setSelectedPeriod] = useState<"daily" | "weekly" | "monthly">("daily");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [activeTab, setActiveTab] = useState<string>("overview");
+
+  // Set active tab based on URL path
+  useEffect(() => {
+    if (location === "/credits") {
+      setActiveTab("credits");
+    } else if (location === "/inventory") {
+      setActiveTab("inventory");
+    } else if (location === "/stats") {
+      setActiveTab("sales");
+    } else {
+      setActiveTab("overview");
+    }
+  }, [location]);
 
   const { data: managerStats, isLoading, refetch } = useQuery<ManagerStats>({
     queryKey: ["/api/manager/stats/daily", selectedDate],
@@ -348,7 +364,7 @@ export default function ManagerDashboard() {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-6 bg-gray-800 border-gray-700">
           <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
           <TabsTrigger value="sales">Ventes</TabsTrigger>

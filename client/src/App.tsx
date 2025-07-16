@@ -77,10 +77,8 @@ function AuthenticatedRoutes({ user }: { user: User }) {
       }
       return <Tables />;
     case "/credits":
-      // Only allow cashiers and servers to access credits
+      // Allow both cashiers/servers and managers to access credits
       if (user.role === "manager") {
-        console.log("Manager redirected from credits to manager dashboard");
-        setTimeout(() => window.location.replace("/manager"), 100);
         return <ManagerDashboard />;
       }
       return <Credits />;
@@ -97,7 +95,11 @@ function AuthenticatedRoutes({ user }: { user: User }) {
     case "/payments":
       return user.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
     case "/stats":
-      return user.role === "manager" ? <ManagerDashboard /> : <Dashboard />;
+      // Allow managers to access stats, redirect others to dashboard
+      if (user.role === "manager") {
+        return <ManagerDashboard />;
+      }
+      return <Dashboard />;
     default:
       console.log("Unknown route:", cleanLocation, "- showing NotFound");
       return <NotFound />;
