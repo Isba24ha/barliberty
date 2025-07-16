@@ -86,10 +86,10 @@ export default function Login() {
         // Clear all queries to force fresh data loading
         queryClient.clear();
         
-        // Show success message
+        // Show brief welcome message
         toast({
-          title: "Login realizado com sucesso",
-          description: message || `Bem-vindo, ${user.firstName}!`,
+          title: "Bem-vindo!",
+          description: `Olá, ${user.firstName}!`,
         });
         
         console.log("Redirecting user based on role:", user.role);
@@ -112,7 +112,7 @@ export default function Login() {
         setTimeout(() => {
           setLocation(redirectPath);
           console.log("Client-side navigation completed to:", redirectPath);
-        }, 500); // Slightly longer delay for better UX
+        }, 300); // Shorter delay for smoother UX
         
       } catch (error) {
         console.error("Error processing login response:", error);
