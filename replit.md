@@ -293,6 +293,24 @@ The application follows a monorepo structure with shared TypeScript types and sc
 - Authentication system now works seamlessly across all routes (/tables, /orders, etc.)
 - API endpoints return proper 200/304 responses instead of 401 errors
 
+### Manager Credit Menu Navigation Fix (July 2025)
+- Fixed manager credit menu navigation issue - managers can now access "Clients Crédit" tab directly
+- Implemented URL-based tab detection in ManagerDashboard to automatically open correct tab
+- Added controlled tab state management with activeTab state linked to URL parameters
+- Removed automatic redirections that prevented manager access to credit and statistics pages
+- Enhanced tab navigation: /credits opens "Clients Crédit" tab, /stats opens "Ventes" tab
+- Session history now displays accurate payment data (15,000 F CFA morning, 1,000 F CFA evening)
+- Managers can now seamlessly navigate between overview, sales, inventory, and credit management
+
+### Production Database Cleanup (July 2025)
+- Removed all test data: "Client Test", "Nouveau Client Test" and associated orders
+- Deleted test transactions: 4 orders, 2 order_items, 4 payments from test clients
+- Removed test sessions: 3 bar_sessions with no real transaction data
+- Reset all sequence counters to 1 for clean production start
+- Maintained real client data: only "CARL MALACK" remains in credit_clients
+- Current session (ID: 4) remains active for ongoing operations
+- Database now clean and ready for production use with proper sequence numbering
+
 ### Login Performance Optimization (July 2025)
 - Dramatically improved login speed from 2.4 seconds to 0.042 seconds (98% improvement)
 - Implemented user cache system that preloads all 11 users at server startup
