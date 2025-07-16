@@ -30,19 +30,18 @@ const corsOptions = {
     // Define allowed origins based on environment
     const allowedOrigins = isProduction 
       ? [
+          'https://barliberty.onrender.com',
           process.env.FRONTEND_URL,
-          process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : null,
-          'https://liberty-bar-management.replit.app',
-          // Add your custom domain here when deployed
+          // Add any additional production domains here
         ].filter(Boolean) // Remove null values
       : [
           'http://localhost:5000',
           'http://localhost:3000',
           'http://127.0.0.1:5000',
           'http://127.0.0.1:3000',
-          // Add the current Replit preview URL
-          /https:\/\/.*\.replit\.dev$/,
-          /https:\/\/.*\.replit\.app$/
+          // Allow all localhost origins in development
+          /^http:\/\/localhost:\d+$/,
+          /^http:\/\/127\.0\.0\.1:\d+$/
         ];
     
     // Check if origin matches any allowed origin or pattern
@@ -71,7 +70,7 @@ const corsOptions = {
   credentials: true, // Allow cookies to be sent
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 };
 
 app.use(cors(corsOptions));
@@ -94,9 +93,9 @@ async function checkDatabaseConnection() {
 if (process.env.NODE_ENV === 'production') {
   log(`Environment variables check:`);
   log(`FRONTEND_URL: ${process.env.FRONTEND_URL || 'NOT SET'}`);
-  log(`REPLIT_DOMAIN: ${process.env.REPLIT_DOMAIN || 'NOT SET'}`);
   log(`DATABASE_URL: ${process.env.DATABASE_URL ? 'SET' : 'NOT SET'}`);
   log(`SESSION_SECRET: ${process.env.SESSION_SECRET ? 'SET' : 'NOT SET'}`);
+  log(`Production frontend domain: https://barliberty.onrender.com`);
 }
 
 // Enhanced middleware configuration
@@ -114,7 +113,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configure session with PostgreSQL store for better performance
+// Configure session with PostgreSQL store for production
 const PgSession = ConnectPgSimple(session);
 app.use(session({
   store: new PgSession({
@@ -134,11 +133,11 @@ app.use(session({
   cookie: {
     secure: isProduction, // Use HTTPS in production
     httpOnly: true,
-    maxAge: 8 * 60 * 60 * 1000, // 8 hours to match client session
+    maxAge: 8 * 60 * 60 * 1000, // 8 hours session duration
     sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-origin in production
     domain: isProduction ? undefined : undefined // Let browser handle domain
   },
-  // Add production environment variable logging
+  // Session ID generation
   genid: () => {
     const sessionId = crypto.randomUUID();
     if (process.env.NODE_ENV === 'development') {

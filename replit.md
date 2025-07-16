@@ -356,3 +356,12 @@ The application follows a monorepo structure with shared TypeScript types and sc
 - **Security Hardening**: Enhanced session management with proper ES module imports and error handling
 - **Session Persistence**: PostgreSQL-backed session store with custom session ID generation
 - **Cross-Origin Support**: Complete cross-origin session management for production deployment
+
+### Production Deployment Configuration (July 2025)
+- **Frontend Domain**: Configured CORS to specifically allow `https://barliberty.onrender.com`
+- **Session Security**: Production session cookies with `secure: true` and `sameSite: 'none'`
+- **CORS Credentials**: Enabled `credentials: true` for cross-origin cookie transmission
+- **Client Configuration**: Frontend already configured with `credentials: "include"` for all API requests
+- **Removed Development Dependencies**: Removed Replit-specific CORS origins for production
+- **PostgreSQL Sessions**: Express-session properly configured with PostgreSQL store
+- **Environment Logging**: Enhanced production logging for deployment debugging
