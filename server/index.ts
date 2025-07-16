@@ -143,21 +143,17 @@ const sessionConfig = {
   }
 };
 
-console.log('Session configuration:', JSON.stringify(sessionConfig, null, 2));
 app.use(session(sessionConfig));
 
-// Session debugging middleware
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api')) {
-    console.log(`[Session Debug] ${req.method} ${req.path}`);
-    console.log(`[Session Debug] Session ID: ${req.sessionID || 'No session ID'}`);
-    console.log(`[Session Debug] Session exists: ${!!req.session}`);
-    console.log(`[Session Debug] User in session: ${req.session?.user?.id || 'No user'}`);
-    console.log(`[Session Debug] Cookies: ${JSON.stringify(req.cookies)}`);
-    console.log(`[Session Debug] Headers: ${JSON.stringify(req.headers.cookie)}`);
-  }
-  next();
-});
+// Session debugging middleware (can be removed in production)
+if (process.env.NODE_ENV === 'development') {
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api') && req.path !== '/api/auth/user') {
+      console.log(`[Session] ${req.method} ${req.path} - User: ${req.session?.user?.id || 'Anonymous'}`);
+    }
+    next();
+  });
+}
 
 app.use((req, res, next) => {
   const start = Date.now();
