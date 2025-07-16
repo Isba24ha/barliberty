@@ -368,3 +368,10 @@ The application follows a monorepo structure with shared TypeScript types and sc
 - **Authentication Flow**: Enhanced login flow with immediate client-side routing and clean welcome messages
 - **Production Ready**: Complete session management system fully operational with robust cookie handling and proper session timing
 - **System Status**: ✅ FULLY FUNCTIONAL - All authentication endpoints working correctly with proper session persistence
+
+### API Authentication Endpoints Enhancement (July 2025)
+- **GET /api/auth/redirect**: Added helper endpoint that returns role-based dashboard routing information
+- **Response Format**: Returns `{ dashboardPath, type, userRole }` for authenticated users
+- **Role-Based Routing**: Managers get `/manager` path with `management` type, cashiers/servers get `/dashboard` path with `operational` type
+- **Session Authentication**: Endpoint properly validates authenticated sessions and returns 401 for unauthenticated requests
+- **Integration Ready**: Endpoint available for frontend components to determine correct dashboard redirection based on user role

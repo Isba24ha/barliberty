@@ -251,6 +251,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper endpoint to get dashboard redirect path based on user role
+  app.get("/api/auth/redirect", requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user || !user.role) {
+        return res.status(401).json({ 
+          message: "Não autorizado",
+          details: "Dados de usuário inválidos" 
+        });
+      }
+
+      let dashboardPath = "/dashboard";
+      let type = "operational";
+
+      if (user.role === "manager") {
+        dashboardPath = "/manager";
+        type = "management";
+      } else if (user.role === "cashier" || user.role === "server") {
+        dashboardPath = "/dashboard";
+        type = "operational";
+      }
+
+      res.json({
+        dashboardPath,
+        type,
+        userRole: user.role
+      });
+    } catch (error) {
+      console.error('Get redirect error:', error);
+      res.status(500).json({ 
+        message: "Erro interno do servidor",
+        details: process.env.NODE_ENV === 'development' ? error.message : "Tente novamente mais tarde"
+      });
+    }
+  });
+
   app.post("/api/auth/logout", (req, res) => {
     try {
       req.session.destroy((err) => {
