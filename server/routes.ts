@@ -133,7 +133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Logout error:', err);
           return res.status(500).json({ message: "Erro ao fazer logout" });
         }
-        res.clearCookie('connect.sid');
+        res.clearCookie('liberty.session');
         res.json({ message: "Logout realizado com sucesso" });
       });
     } catch (error) {
@@ -147,9 +147,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (err) {
         return res.status(500).json({ message: "Erro ao fazer logout" });
       }
-      res.clearCookie('connect.sid');
+      res.clearCookie('liberty.session');
       res.redirect('/login');
     });
+  });
+
+  // Session test route to verify session persistence
+  app.get("/api/auth/session-test", (req, res) => {
+    try {
+      const session = req.session as any;
+      const sessionInfo = {
+        hasSession: !!session,
+        sessionId: session?.id || null,
+        user: session?.user || null,
+        loginTime: session?.loginTime || null,
+        cookie: {
+          secure: session?.cookie?.secure || false,
+          httpOnly: session?.cookie?.httpOnly || false,
+          maxAge: session?.cookie?.maxAge || null,
+          sameSite: session?.cookie?.sameSite || null,
+          domain: session?.cookie?.domain || null
+        },
+        timestamp: new Date().toISOString()
+      };
+      
+      res.json({
+        message: "Session test successful",
+        sessionInfo,
+        authenticated: !!session?.user
+      });
+    } catch (error) {
+      console.error("Session test error:", error);
+      res.status(500).json({ 
+        message: "Session test failed", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
   });
 
   // Session routes

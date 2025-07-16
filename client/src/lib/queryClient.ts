@@ -1,5 +1,20 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// Get the base URL based on environment
+const getBaseUrl = () => {
+  if (typeof window === 'undefined') return ''; // Server-side rendering
+  
+  const isProduction = import.meta.env.PROD;
+  
+  if (isProduction) {
+    // In production, use the current host
+    return window.location.origin;
+  } else {
+    // In development, use localhost
+    return 'http://localhost:5000';
+  }
+};
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -12,11 +27,14 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const baseUrl = getBaseUrl();
+  const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
+  
+  const res = await fetch(fullUrl, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
+    credentials: "include", // Include cookies for cross-origin requests
   });
 
   await throwIfResNotOk(res);
@@ -29,8 +47,12 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
+    const baseUrl = getBaseUrl();
+    const url = queryKey.join("/") as string;
+    const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
+    
+    const res = await fetch(fullUrl, {
+      credentials: "include", // Include cookies for cross-origin requests
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

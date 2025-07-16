@@ -1,11 +1,58 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { pool } from "./db";
 import ConnectPgSimple from "connect-pg-simple";
 
 const app = express();
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+// HTTPS redirect middleware for production
+if (isProduction) {
+  app.use((req, res, next) => {
+    if (req.header('x-forwarded-proto') !== 'https') {
+      return res.redirect(`https://${req.header('host')}${req.url}`);
+    }
+    next();
+  });
+}
+
+// CORS configuration for cross-origin requests
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Define allowed origins based on environment
+    const allowedOrigins = isProduction 
+      ? [
+          process.env.FRONTEND_URL || 'https://liberty-bar-management.replit.app',
+          'https://liberty-bar-management.replit.app',
+          // Add your custom domain here when deployed
+        ]
+      : [
+          'http://localhost:5000',
+          'http://localhost:3000',
+          'http://127.0.0.1:5000',
+          'http://127.0.0.1:3000'
+        ];
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true, // Allow cookies to be sent
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
 
 // Check database connection before starting
 async function checkDatabaseConnection() {
@@ -52,11 +99,13 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   rolling: true, // Reset expiration on activity
+  name: 'liberty.session', // Custom session name
   cookie: {
-    secure: false, // Set to true in production with HTTPS
+    secure: isProduction, // Use HTTPS in production
     httpOnly: true,
     maxAge: 8 * 60 * 60 * 1000, // 8 hours to match client session
-    sameSite: 'lax'
+    sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-origin in production
+    domain: isProduction ? undefined : undefined // Let browser handle domain
   }
 }));
 
