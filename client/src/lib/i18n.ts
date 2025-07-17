@@ -163,6 +163,13 @@ export const PT = {
     addProduct: "Adicionar Produto",
     editProduct: "Editar Produto",
     deleteProduct: "Excluir Produto",
+    searchProducts: "Buscar produtos...",
+    filterByCategory: "Filtrar por categoria",
+    allCategories: "Todas as categorias",
+    noProductsFound: "Nenhum produto encontrado",
+    clearFilters: "Limpar filtros",
+    inStock: "em estoque",
+    productsAvailable: "produtos",
   },
 
   // Time

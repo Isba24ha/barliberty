@@ -34,7 +34,9 @@ import {
   MapPin,
   User,
   UserPlus,
-  Table as TableIcon
+  Table as TableIcon,
+  Search,
+  X
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +70,8 @@ export default function Orders() {
     notes: ''
   });
   const [showNewClientModal, setShowNewClientModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   // Data queries
   const { data: tables, isLoading: tablesLoading } = useQuery<Table[]>({
@@ -434,6 +438,35 @@ export default function Orders() {
     return grouped;
   };
 
+  const filterProducts = (products: Product[]) => {
+    let filtered = products;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(product =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Filter by category
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(product => {
+        const categoryName = categoriesList.find(c => c.id === product.categoryId)?.name || 'Outros';
+        return categoryName === selectedCategory;
+      });
+    }
+
+    return filtered;
+  };
+
+  const getCategoryOptions = () => {
+    const categories = Array.from(new Set(productsList.map(product => {
+      return categoriesList.find(c => c.id === product.categoryId)?.name || 'Outros';
+    })));
+    return categories.sort();
+  };
+
   if (tablesLoading || productsLoading || ordersLoading) {
     return (
       <div className="p-6">
@@ -663,42 +696,110 @@ export default function Orders() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Products List */}
                     <div className="space-y-4">
-                      <h4 className="font-medium text-white">Produtos Disponíveis</h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-white">{PT.products.title} Disponíveis</h4>
+                        <Badge variant="outline" className="text-gray-400">
+                          {filterProducts(productsList).length} {PT.products.productsAvailable}
+                        </Badge>
+                      </div>
+                      
+                      {/* Search and Filter Controls */}
+                      <div className="space-y-3">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                          <Input
+                            placeholder={PT.products.searchProducts}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10 pr-10 bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                          />
+                          {searchQuery && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-700"
+                              onClick={() => setSearchQuery("")}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                        
+                        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                          <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                            <SelectValue placeholder={PT.products.filterByCategory} />
+                          </SelectTrigger>
+                          <SelectContent className="bg-gray-800 border-gray-600">
+                            <SelectItem value="all" className="text-white">{PT.products.allCategories}</SelectItem>
+                            {getCategoryOptions().map((category) => (
+                              <SelectItem key={category} value={category} className="text-white">
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
                       <div className="max-h-96 overflow-y-auto">
-                        {Object.entries(groupProductsByCategory(productsList)).map(([categoryName, categoryProducts]) => (
-                          <div key={categoryName} className="mb-4">
-                            <h5 className="font-medium text-orange-400 mb-2">{categoryName}</h5>
-                            <div className="space-y-2">
-                              {categoryProducts.map((product) => (
-                                <div key={product.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
-                                  <div className="flex-1">
-                                    <div className="flex items-center space-x-2">
-                                      <div className="font-medium text-white">{product.name}</div>
-                                      <div className={`px-2 py-1 rounded text-xs ${
-                                        product.stock <= product.minStock 
-                                          ? 'bg-red-500 text-white' 
-                                          : product.stock <= product.minStock * 2
-                                          ? 'bg-orange-500 text-white'
-                                          : 'bg-green-500 text-white'
-                                      }`}>
-                                        {product.stock} em estoque
-                                      </div>
-                                    </div>
-                                    <div className="text-sm text-gray-400">{formatCurrency(product.price)}</div>
-                                  </div>
-                                  <Button
-                                    onClick={() => handleProductAdd(product)}
-                                    size="sm"
-                                    className="bg-orange-600 hover:bg-orange-700"
-                                    disabled={product.stock <= 0}
-                                  >
-                                    <Plus className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
+                        {filterProducts(productsList).length === 0 ? (
+                          <div className="text-center py-8 text-gray-400">
+                            <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                            <p>{PT.products.noProductsFound}</p>
+                            {(searchQuery || selectedCategory !== "all") && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSearchQuery("");
+                                  setSelectedCategory("all");
+                                }}
+                                className="mt-2 text-gray-400 border-gray-600 hover:bg-gray-700"
+                              >
+                                {PT.products.clearFilters}
+                              </Button>
+                            )}
                           </div>
-                        ))}
+                        ) : (
+                          Object.entries(groupProductsByCategory(filterProducts(productsList))).map(([categoryName, categoryProducts]) => (
+                            <div key={categoryName} className="mb-4">
+                              <h5 className="font-medium text-orange-400 mb-2 flex items-center">
+                                {categoryName}
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  {categoryProducts.length}
+                                </Badge>
+                              </h5>
+                              <div className="space-y-2">
+                                {categoryProducts.map((product) => (
+                                  <div key={product.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                                    <div className="flex-1">
+                                      <div className="flex items-center space-x-2">
+                                        <div className="font-medium text-white">{product.name}</div>
+                                        <div className={`px-2 py-1 rounded text-xs ${
+                                          product.stock <= product.minStock 
+                                            ? 'bg-red-500 text-white' 
+                                            : product.stock <= product.minStock * 2
+                                            ? 'bg-orange-500 text-white'
+                                            : 'bg-green-500 text-white'
+                                        }`}>
+                                          {product.stock} {PT.products.inStock}
+                                        </div>
+                                      </div>
+                                      <div className="text-sm text-gray-400">{formatCurrency(product.price)}</div>
+                                    </div>
+                                    <Button
+                                      onClick={() => handleProductAdd(product)}
+                                      size="sm"
+                                      className="bg-orange-600 hover:bg-orange-700"
+                                      disabled={product.stock <= 0}
+                                    >
+                                      <Plus className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
 
