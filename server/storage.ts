@@ -244,8 +244,10 @@ export class DatabaseStorage implements IStorage {
         description: products.description,
         price: products.price,
         categoryId: products.categoryId,
-        stock: products.stockQuantity,
-        minStock: products.minStockLevel,
+        stockQuantity: products.stockQuantity, // Keep original field names
+        minStockLevel: products.minStockLevel, // Keep original field names
+        stock: products.stockQuantity, // Also provide alias for compatibility
+        minStock: products.minStockLevel, // Also provide alias for compatibility
         maxStock: sql<number>`${products.stockQuantity} * 2`,
         imageUrl: products.imageUrl,
         isActive: products.isActive,

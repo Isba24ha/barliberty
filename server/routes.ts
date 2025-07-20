@@ -961,6 +961,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get top products from actual sales data
       const topProducts = await storage.getTopProductsByDate(date);
 
+      // Get detailed payment breakdown for today
+      const paymentBreakdown = await db
+        .select({
+          method: payments.method,
+          total: sql<number>`SUM(CAST(${payments.amount} AS NUMERIC))`,
+        })
+        .from(payments)
+        .where(
+          and(
+            gte(payments.createdAt, startOfDay),
+            lt(payments.createdAt, endOfDay)
+          )
+        )
+        .groupBy(payments.method);
+
+      const paymentSummary = {
+        cash: 0,
+        card: 0,
+        mobile: 0,
+        credit: 0,
+      };
+
+      paymentBreakdown.forEach(p => {
+        if (p.method === 'cash') paymentSummary.cash = Number(p.total);
+        else if (p.method === 'card') paymentSummary.card = Number(p.total);
+        else if (p.method === 'mobile') paymentSummary.mobile = Number(p.total);
+        else if (p.method === 'credit') paymentSummary.credit = Number(p.total);
+      });
+
       // Get session history with real payment data
       const sessionHistory = await Promise.all(
         sessions.slice(0, 10).map(async (s) => {
@@ -968,6 +997,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const sessionPayments = await db
             .select({
               amount: payments.amount,
+              method: payments.method,
             })
             .from(payments)
             .where(eq(payments.sessionId, s.id));
@@ -994,6 +1024,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dailySales: {
           morning: morningSales.toFixed(2),
           evening: eveningSales.toFixed(2),
+          total: totalSales.toFixed(2),
+        },
+        paymentBreakdown: {
+          cash: paymentSummary.cash.toFixed(2),
+          card: paymentSummary.card.toFixed(2),
+          mobile: paymentSummary.mobile.toFixed(2),
+          credit: paymentSummary.credit.toFixed(2),
           total: totalSales.toFixed(2),
         },
         weeklySales: totalSales.toFixed(2), // Only show real daily data
@@ -1097,12 +1134,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const lowStockProducts = products.filter(p => {
         const hasStock = p.stockQuantity !== null && p.minStockLevel !== null;
-        const isLowStock = hasStock && p.stockQuantity <= p.minStockLevel;
+        const isLowStock = hasStock && Number(p.stockQuantity) <= Number(p.minStockLevel);
         const isActive = p.isActive === true;
         
-        if (isLowStock && isActive) {
-          console.log(`[DEBUG] Low stock product: ${p.name}, stock: ${p.stockQuantity}, min: ${p.minStockLevel}`);
-        }
+        console.log(`[DEBUG] Product: ${p.name}, stock: ${p.stockQuantity} (${typeof p.stockQuantity}), min: ${p.minStockLevel} (${typeof p.minStockLevel}), active: ${p.isActive}, isLowStock: ${isLowStock}`);
         
         return hasStock && isLowStock && isActive;
       });
