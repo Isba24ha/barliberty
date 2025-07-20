@@ -952,7 +952,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get product statistics
       const products = await storage.getAllProducts();
       const lowStockProducts = products.filter(p => 
-        p.stockQuantity !== null && p.minStockLevel !== null && p.stockQuantity <= p.minStockLevel
+        p.stockQuantity !== null && 
+        p.minStockLevel !== null && 
+        p.stockQuantity <= p.minStockLevel &&
+        p.isActive === true
       ).length;
 
       // Get top products from actual sales data
@@ -977,8 +980,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return {
             id: s.id,
             date: new Date(s.createdAt!).toLocaleDateString("pt-PT"),
-            shift: s.shiftType === "morning" ? "Matin" : "Soir",
-            user: s.user?.firstName + " " + s.user?.lastName,
+            shift: s.shiftType === "morning" ? "Manhã" : "Tarde",
+            user: s.user?.firstName && s.user?.lastName 
+              ? `${s.user.firstName} ${s.user.lastName}` 
+              : s.userId || "Usuário",
             sales: sessionSales.toFixed(2),
             transactions: sessionPayments.length,
           };
@@ -1088,12 +1093,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/manager/low-stock", requireAuth, requireRole(["manager"]), async (req, res) => {
     try {
       const products = await storage.getAllProducts();
-      const lowStockProducts = products.filter(p => 
-        p.stockQuantity !== null && 
-        p.minStockLevel !== null && 
-        p.stockQuantity <= p.minStockLevel &&
-        p.isActive
-      );
+      console.log(`[DEBUG] Total products: ${products.length}`);
+      
+      const lowStockProducts = products.filter(p => {
+        const hasStock = p.stockQuantity !== null && p.minStockLevel !== null;
+        const isLowStock = hasStock && p.stockQuantity <= p.minStockLevel;
+        const isActive = p.isActive === true;
+        
+        if (isLowStock && isActive) {
+          console.log(`[DEBUG] Low stock product: ${p.name}, stock: ${p.stockQuantity}, min: ${p.minStockLevel}`);
+        }
+        
+        return hasStock && isLowStock && isActive;
+      });
+
+      console.log(`[DEBUG] Low stock products found: ${lowStockProducts.length}`);
 
       res.json(lowStockProducts.map(p => ({
         id: p.id,
