@@ -1029,58 +1029,60 @@ export default function ManagerDashboard() {
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-2">Informações da Sessão</h3>
                   <div className="space-y-2">
-                    <p><span className="text-gray-400">ID:</span> {sessionDetails.session.id}</p>
-                    <p><span className="text-gray-400">Data:</span> {sessionDetails.session.date}</p>
-                    <p><span className="text-gray-400">Turno:</span> {sessionDetails.session.shift}</p>
-                    <p><span className="text-gray-400">Utilizador:</span> {sessionDetails.session.user}</p>
-                    <p><span className="text-gray-400">Transações:</span> {sessionDetails.session.transactions}</p>
+                    <p><span className="text-gray-400">ID:</span> {sessionDetails.id}</p>
+                    <p><span className="text-gray-400">Data:</span> {sessionDetails.date}</p>
+                    <p><span className="text-gray-400">Turno:</span> {sessionDetails.shiftType}</p>
+                    <p><span className="text-gray-400">Utilizador:</span> {sessionDetails.cashier}</p>
+                    <p><span className="text-gray-400">Transações:</span> {sessionDetails.transactionCount}</p>
+                    <p><span className="text-gray-400">Status:</span> <span className={sessionDetails.isActive ? "text-green-400" : "text-gray-400"}>{sessionDetails.isActive ? "Ativa" : "Finalizada"}</span></p>
                   </div>
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-2">{PT.manager.paymentMethods}</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-gray-400">{PT.manager.totalCash}:</span>
-                      <span className="text-green-400">{formatCurrency(sessionDetails.paymentBreakdown.cash)}</span>
+                      <span className="text-gray-400">Dinheiro ({sessionDetails.paymentBreakdown.cash.count}x):</span>
+                      <span className="text-green-400">{formatCurrency(sessionDetails.paymentBreakdown.cash.total.toString())}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">{PT.manager.totalCard}:</span>
-                      <span className="text-blue-400">{formatCurrency(sessionDetails.paymentBreakdown.card)}</span>
+                      <span className="text-gray-400">Mobile Money ({sessionDetails.paymentBreakdown.mobile_money.count}x):</span>
+                      <span className="text-blue-400">{formatCurrency(sessionDetails.paymentBreakdown.mobile_money.total.toString())}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">{PT.manager.totalCredit}:</span>
-                      <span className="text-orange-400">{formatCurrency(sessionDetails.paymentBreakdown.credit)}</span>
+                      <span className="text-gray-400">Crédito ({sessionDetails.paymentBreakdown.credit.count}x):</span>
+                      <span className="text-orange-400">{formatCurrency(sessionDetails.paymentBreakdown.credit.total.toString())}</span>
                     </div>
                     <div className="border-t border-gray-600 pt-2">
                       <div className="flex justify-between font-semibold">
                         <span className="text-white">Total:</span>
-                        <span className="text-green-400">{formatCurrency(sessionDetails.paymentBreakdown.total)}</span>
+                        <span className="text-green-400">{formatCurrency(sessionDetails.totalSales.toString())}</span>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Payment List */}
+              {/* Orders List */}
               <div>
-                <h3 className="text-lg font-semibold text-white mb-2">Lista de Pagamentos</h3>
+                <h3 className="text-lg font-semibold text-white mb-2">Lista de Pedidos</h3>
                 <div className="max-h-64 overflow-y-auto space-y-2">
-                  {sessionDetails.payments.map((payment: any, index: number) => (
+                  {sessionDetails.orders?.map((order: any, index: number) => (
                     <div key={index} className="flex justify-between items-center p-2 bg-gray-700 rounded">
                       <div>
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          payment.method === 'cash' ? 'bg-green-600' : 
-                          payment.method === 'card' ? 'bg-blue-600' : 'bg-orange-600'
+                          order.status === 'completed' ? 'bg-green-600' : 
+                          order.status === 'pending' ? 'bg-yellow-600' : 'bg-gray-600'
                         }`}>
-                          {payment.method.toUpperCase()}
+                          {order.status.toUpperCase()}
                         </span>
+                        <p className="text-white mt-1">Mesa {order.tableId} - {order.clientName}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-white">{formatCurrency(payment.amount)}</p>
-                        <p className="text-xs text-gray-400">{new Date(payment.time).toLocaleTimeString('pt-PT')}</p>
+                        <p className="text-white">{formatCurrency(order.totalPrice)}</p>
+                        <p className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleTimeString('pt-PT')}</p>
                       </div>
                     </div>
-                  ))}
+                  )) || <p className="text-gray-400 text-center py-4">Nenhum pedido encontrado</p>}
                 </div>
               </div>
 
