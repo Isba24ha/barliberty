@@ -525,36 +525,46 @@ export default function ManagerDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {managerStats?.sessionHistory?.map((session) => (
-                    <div key={session.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
-                      <div className="flex-1">
-                        <p className="text-white font-medium">{session.user}</p>
-                        <p className="text-sm text-gray-400">{session.date} - {session.shift}</p>
+                  {console.log("Session History Debug:", managerStats?.sessionHistory)}
+                  {managerStats?.sessionHistory && managerStats.sessionHistory.length > 0 ? (
+                    managerStats.sessionHistory.map((session) => (
+                      <div key={session.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                        <div className="flex-1">
+                          <p className="text-white font-medium">{session.user}</p>
+                          <p className="text-sm text-gray-400">{session.date} - {session.shift}</p>
+                        </div>
+                        <div className="text-right mr-4">
+                          <p className="text-sm font-medium text-green-400">{formatCurrency(session.sales)}</p>
+                          <p className="text-sm text-gray-400">{session.transactions} transações</p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="border-blue-600 text-blue-400 hover:bg-blue-600"
+                            onClick={() => handleViewSessionDetails(session.id)}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="border-green-600 text-green-400 hover:bg-green-600"
+                            onClick={() => handleExportSession(session.id)}
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="text-right mr-4">
-                        <p className="text-sm font-medium text-green-400">{formatCurrency(session.sales)}</p>
-                        <p className="text-sm text-gray-400">{session.transactions} transações</p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="border-blue-600 text-blue-400 hover:bg-blue-600"
-                          onClick={() => handleViewSessionDetails(session.id)}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="border-green-600 text-green-400 hover:bg-green-600"
-                          onClick={() => handleExportSession(session.id)}
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-gray-400 mb-2">Nenhuma sessão encontrada</p>
+                      <p className="text-xs text-gray-500">
+                        Debug: {JSON.stringify(managerStats?.sessionHistory || "undefined")}
+                      </p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </CardContent>
             </Card>

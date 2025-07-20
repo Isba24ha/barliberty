@@ -891,8 +891,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { date } = req.params;
       
-      // Get all sessions for the selected date (only real sessions with actual data)
-      const sessions = await storage.getSessionsByPeriod("daily", date);
+      // Get all sessions for session history (not just today's sessions)
+      console.log("[DEBUG] About to execute sessions query");
+      const sessions = await db
+        .select({
+          id: barSessions.id,
+          userId: barSessions.userId,
+          shiftType: barSessions.shiftType,
+          createdAt: barSessions.createdAt,
+          endedAt: barSessions.endedAt,
+          isActive: barSessions.isActive,
+          totalSales: barSessions.totalSales,
+          transactionCount: barSessions.transactionCount
+        })
+        .from(barSessions)
+        .orderBy(desc(barSessions.createdAt))
+        .limit(20);
+      
+      console.log("[DEBUG] Sessions query executed, result length:", sessions.length);
+      console.log("[DEBUG] Sessions query result:", sessions);
       
       // Calculate daily sales by shift from payments table for accurate results
       const targetDate = new Date(date);
@@ -900,21 +917,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const endOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate() + 1);
       
       // Get all payments for the selected date
+      console.log("[DEBUG] About to fetch today payments");
       const todayPayments = await db
         .select({
           amount: payments.amount,
           sessionId: payments.sessionId,
         })
         .from(payments)
-        .leftJoin(barSessions, eq(payments.sessionId, barSessions.id))
         .where(
           and(
             gte(payments.createdAt, startOfDay),
             lt(payments.createdAt, endOfDay)
           )
         );
+      console.log("[DEBUG] Today payments fetched:", todayPayments.length);
       
       // Get session shift types for the date
+      console.log("[DEBUG] About to fetch session shifts");
       const sessionShifts = await db
         .select({
           id: barSessions.id,
@@ -927,6 +946,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lt(barSessions.createdAt, endOfDay)
           )
         );
+      console.log("[DEBUG] Session shifts fetched:", sessionShifts.length);
       
       const sessionShiftMap = new Map(sessionShifts.map(s => [s.id, s.shiftType]));
       
@@ -1016,48 +1036,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
         else if (p.method === 'credit') paymentSummary.credit = Number(p.total);
       });
 
+      console.log("[DEBUG] About to log sessions variable");
+      console.log("[DEBUG] Sessions variable:", sessions);
+      console.log("[DEBUG] Sessions length:", sessions?.length || 0);
+      console.log("[DEBUG] Sessions type:", typeof sessions);
+      
       // Get session history - simplified approach to avoid Drizzle JOIN issues
       const sessionHistory = await Promise.all(
         sessions.slice(0, 10).map(async (session) => {
-          // Get payments for this session
-          const sessionPayments = await db
-            .select({
-              amount: payments.amount,
-            })
-            .from(payments)
-            .where(eq(payments.sessionId, session.id));
-          
-          const sessionSales = sessionPayments.reduce(
-            (sum, payment) => sum + parseFloat(payment.amount || "0"),
-            0
-          );
+          try {
+            // Get payments for this session
+            console.log("[DEBUG] Getting payments for session:", session.id);
+            const sessionPayments = await db
+              .select({
+                amount: payments.amount,
+              })
+              .from(payments)
+              .where(eq(payments.sessionId, session.id));
+            console.log("[DEBUG] Got payments for session:", session.id, "count:", sessionPayments.length);
+            
+            const sessionSales = sessionPayments.reduce(
+              (sum, payment) => sum + parseFloat(payment.amount || "0"),
+              0
+            );
 
-          // Get user info
-          const sessionUser = await db
-            .select({
-              firstName: users.firstName,
-              lastName: users.lastName,
-            })
-            .from(users)
-            .where(eq(users.id, session.userId))
-            .limit(1);
-          
-          const userInfo = sessionUser[0];
-          const userName = userInfo?.firstName && userInfo?.lastName 
-            ? `${userInfo.firstName} ${userInfo.lastName}` 
-            : session.userId || "Usuário";
-          
-          return {
-            id: session.id,
-            date: new Date(session.createdAt!).toLocaleDateString("pt-PT"),
-            shift: session.shiftType === "morning" ? "Manhã" : "Tarde",
-            user: userName,
-            sales: sessionSales.toFixed(2),
-            transactions: sessionPayments.length,
-          };
+            // Get user info with explicit field selection
+            let userName = session.userId || "Usuário";
+            try {
+              const sessionUser = await db
+                .select({
+                  firstName: users.firstName,
+                  lastName: users.lastName,
+                })
+                .from(users)
+                .where(eq(users.id, session.userId))
+                .limit(1);
+              
+              const userInfo = sessionUser[0];
+              if (userInfo?.firstName && userInfo?.lastName) {
+                userName = `${userInfo.firstName} ${userInfo.lastName}`;
+              }
+            } catch (userError) {
+              console.error("[DEBUG] Error fetching user info for session:", session.id, userError);
+            }
+            
+            return {
+              id: session.id,
+              date: new Date(session.createdAt!).toLocaleDateString("pt-PT"),
+              shift: session.shiftType === "morning" ? "Manhã" : "Tarde",
+              user: userName,
+              sales: sessionSales.toFixed(2),
+              transactions: sessionPayments.length,
+            };
+          } catch (sessionError) {
+            console.error("[DEBUG] Error processing session:", session.id, sessionError);
+            return {
+              id: session.id,
+              date: "Error",
+              shift: session.shiftType === "morning" ? "Manhã" : "Tarde",
+              user: session.userId || "Usuário",
+              sales: "0.00",
+              transactions: 0,
+            };
+          }
         })
       );
 
+      console.log("[DEBUG] Session History being sent:", sessionHistory);
+      
       const managerStats = {
         dailySales: {
           morning: morningSales.toFixed(2),
