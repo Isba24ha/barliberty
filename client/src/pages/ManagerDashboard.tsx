@@ -38,6 +38,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { thermalPrinter } from "@/lib/thermalPrinter";
 import type { User, CreditClient } from "@shared/schema";
 
 interface ManagerStats {
@@ -609,7 +610,7 @@ export default function ManagerDashboard() {
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <CreditCard className="h-5 w-5" />
-                Breakdown de Pagamentos - {selectedDate}
+                Breakdown de Pagamentos - Sessão Ativa
               </CardTitle>
             </CardHeader>
             <CardContent>

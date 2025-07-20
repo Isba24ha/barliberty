@@ -1,216 +1,342 @@
-import type { OrderWithItems } from "@shared/schema";
-import { formatCurrency } from "./currency";
+// Thermal Printer Integration for EPSON Printers
+// Supports Web Serial API and fallback methods
 
-export interface ThermalPrinterConfig {
-  printerName?: string;
-  paperWidth?: number;
-  lineSpacing?: number;
-  fontSize?: number;
+export interface PrintReceipt {
+  orderNumber: string;
+  tableName: string;
+  clientName?: string;
+  items: Array<{
+    name: string;
+    quantity: number;
+    price: string;
+    total: string;
+  }>;
+  subtotal: string;
+  total: string;
+  paymentMethod: string;
+  receivedAmount?: string;
+  change?: string;
+  cashier: string;
+  timestamp: string;
 }
 
-export class ThermalPrinter {
-  private config: ThermalPrinterConfig;
+class ThermalPrinter {
+  private port: SerialPort | null = null;
+  private writer: WritableStreamDefaultWriter | null = null;
 
-  constructor(config: ThermalPrinterConfig = {}) {
-    this.config = {
-      printerName: config.printerName || 'EPSON TM-T20',
-      paperWidth: config.paperWidth || 48,
-      lineSpacing: config.lineSpacing || 1,
-      fontSize: config.fontSize || 12,
-      ...config
-    };
-  }
+  // ESC/POS Commands for EPSON thermal printers
+  private readonly ESC = '\x1B';
+  private readonly GS = '\x1D';
+  private readonly COMMANDS = {
+    INIT: '\x1B\x40',          // Initialize printer
+    ALIGN_CENTER: '\x1B\x61\x01', // Center alignment
+    ALIGN_LEFT: '\x1B\x61\x00',   // Left alignment
+    BOLD_ON: '\x1B\x45\x01',      // Bold on
+    BOLD_OFF: '\x1B\x45\x00',     // Bold off
+    SIZE_NORMAL: '\x1D\x21\x00',  // Normal size
+    SIZE_DOUBLE: '\x1D\x21\x11',  // Double size
+    CUT_PAPER: '\x1D\x56\x41',    // Cut paper
+    LINE_FEED: '\x0A',            // Line feed
+    CARRIAGE_RETURN: '\x0D',      // Carriage return
+  };
 
-  private formatLine(text: string, width: number = this.config.paperWidth || 48): string {
-    if (text.length <= width) {
-      return text;
+  async connect(): Promise<boolean> {
+    if (!navigator.serial) {
+      console.warn('Web Serial API not supported');
+      return false;
     }
-    return text.substring(0, width - 3) + '...';
-  }
 
-  private centerText(text: string, width: number = this.config.paperWidth || 48): string {
-    const padding = Math.max(0, Math.floor((width - text.length) / 2));
-    return ' '.repeat(padding) + text;
-  }
-
-  private rightAlign(text: string, width: number = this.config.paperWidth || 48): string {
-    const padding = Math.max(0, width - text.length);
-    return ' '.repeat(padding) + text;
-  }
-
-  private formatItemLine(name: string, qty: number, price: string, width: number = this.config.paperWidth || 48): string {
-    const qtyStr = `${qty}x`;
-    const priceStr = price;
-    const maxNameWidth = width - qtyStr.length - priceStr.length - 2; // 2 spaces
-    
-    const truncatedName = name.length > maxNameWidth ? 
-      name.substring(0, maxNameWidth - 3) + '...' : 
-      name;
-    
-    const spacesNeeded = width - qtyStr.length - truncatedName.length - priceStr.length;
-    return `${qtyStr} ${truncatedName}${' '.repeat(Math.max(0, spacesNeeded))}${priceStr}`;
-  }
-
-  generateReceiptText(order: OrderWithItems): string {
-    const width = this.config.paperWidth || 48;
-    const lines: string[] = [];
-    
-    // Header
-    lines.push(this.centerText('LIBERTY', width));
-    lines.push(this.centerText('Cafe - Bar - Lounge', width));
-    lines.push('');
-    lines.push(this.centerText('Recibo de Venda', width));
-    lines.push('-'.repeat(width));
-    
-    // Order info
-    lines.push(`Recibo #${order.id}`);
-    lines.push(`Data: ${new Date(order.createdAt).toLocaleString('pt-PT')}`);
-    lines.push(`Mesa: ${order.table?.number || 'N/A'}`);
-    lines.push(`Servidor: ${order.server?.firstName || 'N/A'}`);
-    lines.push(`Cliente: ${order.clientName || 'Cliente Anônimo'}`);
-    lines.push('-'.repeat(width));
-    
-    // Items
-    lines.push('ITENS:');
-    order.items.forEach(item => {
-      lines.push(this.formatItemLine(
-        item.product.name,
-        item.quantity,
-        formatCurrency(parseFloat(item.totalPrice)),
-        width
-      ));
-    });
-    
-    lines.push('-'.repeat(width));
-    
-    // Total
-    lines.push(this.rightAlign(`TOTAL: ${formatCurrency(order.totalAmount)}`, width));
-    
-    // Payment method
-    if (order.paymentMethod) {
-      const paymentMethods = {
-        cash: 'Dinheiro',
-        mobile_money: 'Mobile Money',
-        credit: 'Crédito',
-        partial: 'Parcial'
-      };
-      lines.push(`Pagamento: ${paymentMethods[order.paymentMethod as keyof typeof paymentMethods] || order.paymentMethod}`);
-    }
-    
-    lines.push('-'.repeat(width));
-    lines.push(this.centerText('Obrigado pela preferência!', width));
-    lines.push('');
-    lines.push('');
-    lines.push('');
-    
-    return lines.join('\n');
-  }
-
-  async printReceipt(order: OrderWithItems): Promise<void> {
-    const receiptText = this.generateReceiptText(order);
-    
     try {
-      // Check if Web Serial API is available (modern browsers)
-      if ('serial' in navigator) {
-        await this.printViaWebSerial(receiptText);
-      } else {
-        // Fallback to print dialog
-        await this.printViaDialog(receiptText);
-      }
+      // Request a port
+      this.port = await navigator.serial.requestPort({
+        filters: [
+          { usbVendorId: 0x04b8 }, // EPSON
+          { usbVendorId: 0x0483 }, // Generic thermal printer
+        ]
+      });
+
+      // Open the port
+      await this.port.open({ 
+        baudRate: 9600,
+        dataBits: 8,
+        parity: 'none',
+        stopBits: 1,
+        flowControl: 'none'
+      });
+
+      this.writer = this.port.writable?.getWriter() || null;
+      return true;
     } catch (error) {
-      console.error('Erro ao imprimir recibo:', error);
-      // Fallback to download as text file
-      this.downloadAsText(receiptText, `recibo-${order.id}.txt`);
-      throw new Error('Não foi possível imprimir. Recibo foi baixado como arquivo de texto.');
+      console.error('Failed to connect to printer:', error);
+      return false;
     }
   }
 
-  private async printViaWebSerial(text: string): Promise<void> {
+  async disconnect(): Promise<void> {
+    if (this.writer) {
+      await this.writer.close();
+      this.writer = null;
+    }
+    if (this.port) {
+      await this.port.close();
+      this.port = null;
+    }
+  }
+
+  private async writeCommand(command: string): Promise<void> {
+    if (!this.writer) {
+      throw new Error('Printer not connected');
+    }
+    const encoder = new TextEncoder();
+    await this.writer.write(encoder.encode(command));
+  }
+
+  private async writeText(text: string): Promise<void> {
+    if (!this.writer) {
+      throw new Error('Printer not connected');
+    }
+    const encoder = new TextEncoder();
+    await this.writer.write(encoder.encode(text));
+  }
+
+  async printReceipt(receipt: PrintReceipt): Promise<boolean> {
     try {
-      // Request serial port access
-      const port = await (navigator as any).serial.requestPort();
-      await port.open({ baudRate: 9600 });
-      
-      const writer = port.writable.getWriter();
-      
-      // Send print commands for EPSON thermal printers
-      const encoder = new TextEncoder();
-      
+      if (!this.writer) {
+        // Fallback to browser print if no thermal printer
+        return this.fallbackPrint(receipt);
+      }
+
       // Initialize printer
-      await writer.write(encoder.encode('\x1B@')); // ESC @ - Initialize
+      await this.writeCommand(this.COMMANDS.INIT);
       
-      // Set font size
-      await writer.write(encoder.encode('\x1B!0')); // ESC ! 0 - Normal font
+      // Header
+      await this.writeCommand(this.COMMANDS.ALIGN_CENTER);
+      await this.writeCommand(this.COMMANDS.SIZE_DOUBLE);
+      await this.writeCommand(this.COMMANDS.BOLD_ON);
+      await this.writeText('LIBERTY\n');
+      await this.writeText('Cafe - Bar - Lounge\n');
+      await this.writeCommand(this.COMMANDS.BOLD_OFF);
+      await this.writeCommand(this.COMMANDS.SIZE_NORMAL);
+      await this.writeText('================================\n');
       
-      // Print text
-      await writer.write(encoder.encode(text));
+      // Receipt details
+      await this.writeCommand(this.COMMANDS.ALIGN_LEFT);
+      await this.writeText(`Recibo: ${receipt.orderNumber}\n`);
+      await this.writeText(`Mesa: ${receipt.tableName}\n`);
+      if (receipt.clientName) {
+        await this.writeText(`Cliente: ${receipt.clientName}\n`);
+      }
+      await this.writeText(`Data: ${receipt.timestamp}\n`);
+      await this.writeText(`Caixa: ${receipt.cashier}\n`);
+      await this.writeText('================================\n');
+      
+      // Items
+      for (const item of receipt.items) {
+        await this.writeText(`${item.name}\n`);
+        await this.writeText(`  ${item.quantity}x ${item.price} = ${item.total} F CFA\n`);
+      }
+      
+      await this.writeText('--------------------------------\n');
+      await this.writeText(`Subtotal: ${receipt.subtotal} F CFA\n`);
+      await this.writeCommand(this.COMMANDS.BOLD_ON);
+      await this.writeText(`TOTAL: ${receipt.total} F CFA\n`);
+      await this.writeCommand(this.COMMANDS.BOLD_OFF);
+      
+      // Payment details
+      await this.writeText('--------------------------------\n');
+      await this.writeText(`Pagamento: ${receipt.paymentMethod}\n`);
+      if (receipt.receivedAmount) {
+        await this.writeText(`Recebido: ${receipt.receivedAmount} F CFA\n`);
+      }
+      if (receipt.change && parseFloat(receipt.change) > 0) {
+        await this.writeText(`Troco: ${receipt.change} F CFA\n`);
+      }
+      
+      // Footer
+      await this.writeText('\n');
+      await this.writeCommand(this.COMMANDS.ALIGN_CENTER);
+      await this.writeText('Obrigado pela preferencia!\n');
+      await this.writeText('Volte sempre!\n');
+      await this.writeText('\n\n');
       
       // Cut paper
-      await writer.write(encoder.encode('\x1DV\x42\x00')); // GS V B 0 - Full cut
+      await this.writeCommand(this.COMMANDS.CUT_PAPER);
       
-      writer.releaseLock();
-      await port.close();
-      
+      return true;
     } catch (error) {
-      console.error('Erro na impressão serial:', error);
-      throw error;
+      console.error('Failed to print receipt:', error);
+      return this.fallbackPrint(receipt);
     }
   }
 
-  private async printViaDialog(text: string): Promise<void> {
-    // Create a temporary window with the receipt for printing
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    if (!printWindow) {
-      throw new Error('Não foi possível abrir janela de impressão');
-    }
-    
-    printWindow.document.write(`
-      <html>
+  private fallbackPrint(receipt: PrintReceipt): boolean {
+    try {
+      // Create receipt HTML for browser printing
+      const receiptHtml = `
+        <!DOCTYPE html>
+        <html>
         <head>
-          <title>Recibo #${Date.now()}</title>
+          <title>Recibo - ${receipt.orderNumber}</title>
           <style>
             body { 
               font-family: 'Courier New', monospace; 
               font-size: 12px; 
+              width: 58mm; 
               margin: 0; 
-              padding: 10px; 
-              white-space: pre-wrap;
+              padding: 5mm;
             }
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .large { font-size: 16px; }
+            .line { border-bottom: 1px dashed #000; margin: 5px 0; }
             @media print {
-              body { margin: 0; padding: 5px; }
+              body { margin: 0; padding: 0; }
             }
           </style>
         </head>
-        <body>${text}</body>
-      </html>
-    `);
-    
-    printWindow.document.close();
-    
-    // Wait for content to load then print
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 100);
+        <body>
+          <div class="center bold large">LIBERTY</div>
+          <div class="center">Cafe - Bar - Lounge</div>
+          <div class="line"></div>
+          
+          <div>Recibo: ${receipt.orderNumber}</div>
+          <div>Mesa: ${receipt.tableName}</div>
+          ${receipt.clientName ? `<div>Cliente: ${receipt.clientName}</div>` : ''}
+          <div>Data: ${receipt.timestamp}</div>
+          <div>Caixa: ${receipt.cashier}</div>
+          <div class="line"></div>
+          
+          ${receipt.items.map(item => `
+            <div>${item.name}</div>
+            <div>&nbsp;&nbsp;${item.quantity}x ${item.price} = ${item.total} F CFA</div>
+          `).join('')}
+          
+          <div class="line"></div>
+          <div>Subtotal: ${receipt.subtotal} F CFA</div>
+          <div class="bold">TOTAL: ${receipt.total} F CFA</div>
+          <div class="line"></div>
+          
+          <div>Pagamento: ${receipt.paymentMethod}</div>
+          ${receipt.receivedAmount ? `<div>Recebido: ${receipt.receivedAmount} F CFA</div>` : ''}
+          ${receipt.change && parseFloat(receipt.change) > 0 ? `<div>Troco: ${receipt.change} F CFA</div>` : ''}
+          
+          <br>
+          <div class="center">Obrigado pela preferencia!</div>
+          <div class="center">Volte sempre!</div>
+        </body>
+        </html>
+      `;
+
+      // Open in new window and print
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(receiptHtml);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 250);
+        return true;
+      }
+      
+      // Fallback: download as text file
+      this.downloadReceiptAsText(receipt);
+      return true;
+    } catch (error) {
+      console.error('Fallback print failed:', error);
+      return false;
+    }
   }
 
-  private downloadAsText(text: string, filename: string): void {
-    const blob = new Blob([text], { type: 'text/plain' });
+  private downloadReceiptAsText(receipt: PrintReceipt): void {
+    const receiptText = `
+LIBERTY
+Cafe - Bar - Lounge
+================================
+
+Recibo: ${receipt.orderNumber}
+Mesa: ${receipt.tableName}
+${receipt.clientName ? `Cliente: ${receipt.clientName}\n` : ''}Data: ${receipt.timestamp}
+Caixa: ${receipt.cashier}
+================================
+
+${receipt.items.map(item => 
+  `${item.name}\n  ${item.quantity}x ${item.price} = ${item.total} F CFA`
+).join('\n')}
+
+--------------------------------
+Subtotal: ${receipt.subtotal} F CFA
+TOTAL: ${receipt.total} F CFA
+--------------------------------
+
+Pagamento: ${receipt.paymentMethod}
+${receipt.receivedAmount ? `Recebido: ${receipt.receivedAmount} F CFA\n` : ''}${receipt.change && parseFloat(receipt.change) > 0 ? `Troco: ${receipt.change} F CFA\n` : ''}
+
+Obrigado pela preferencia!
+Volte sempre!
+    `;
+
+    const blob = new Blob([receiptText], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = filename;
+    a.download = `recibo-${receipt.orderNumber}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
 
-  // Preview receipt text
-  previewReceipt(order: OrderWithItems): string {
-    return this.generateReceiptText(order);
+  async testPrinter(): Promise<boolean> {
+    try {
+      if (!this.writer) {
+        console.log('Testing printer connection...');
+        const connected = await this.connect();
+        if (!connected) {
+          return false;
+        }
+      }
+
+      await this.writeCommand(this.COMMANDS.INIT);
+      await this.writeCommand(this.COMMANDS.ALIGN_CENTER);
+      await this.writeText('TESTE DE IMPRESSORA\n');
+      await this.writeText('LIBERTY - Cafe Bar Lounge\n');
+      await this.writeText('Impressora funcionando!\n\n');
+      await this.writeCommand(this.COMMANDS.CUT_PAPER);
+      
+      return true;
+    } catch (error) {
+      console.error('Printer test failed:', error);
+      return false;
+    }
   }
 }
 
-// Export a default instance
+// Export singleton instance
 export const thermalPrinter = new ThermalPrinter();
+
+// Helper function to format receipt data from order
+export function formatReceiptFromOrder(orderData: any, paymentData: any, cashierName: string): PrintReceipt {
+  const now = new Date();
+  return {
+    orderNumber: orderData.id?.toString() || 'N/A',
+    tableName: orderData.tableName || 'N/A',
+    clientName: orderData.clientName,
+    items: orderData.items?.map((item: any) => ({
+      name: item.productName || item.name,
+      quantity: item.quantity,
+      price: parseFloat(item.price || '0').toFixed(2),
+      total: (item.quantity * parseFloat(item.price || '0')).toFixed(2),
+    })) || [],
+    subtotal: orderData.total || '0.00',
+    total: paymentData.amount || orderData.total || '0.00',
+    paymentMethod: paymentData.method === 'cash' ? 'Dinheiro' : 
+                   paymentData.method === 'card' ? 'Cartão' :
+                   paymentData.method === 'mobile' ? 'Mobile Money' : 'Crédito',
+    receivedAmount: paymentData.receivedAmount,
+    change: paymentData.changeAmount,
+    cashier: cashierName,
+    timestamp: now.toLocaleString('pt-PT'),
+  };
+}

@@ -939,11 +939,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Get active credits
+      // Get active credits - show total credit due (not payments made)
       const creditClients = await storage.getAllCreditClients();
       const activeCredits = creditClients
         .filter(c => c.isActive && parseFloat(c.totalCredit) > 0)
         .reduce((sum, c) => sum + parseFloat(c.totalCredit), 0);
+
+      // Calculate actual credit due by subtracting payments made to credit accounts
+      const creditPaymentsTotal = await db
+        .select({
+          total: sum(sql<number>`CAST(${payments.amount} AS NUMERIC)`),
+        })
+        .from(payments)
+        .where(eq(payments.method, 'credit'));
+
+      const creditPaymentsMade = creditPaymentsTotal[0]?.total || 0;
+      const actualCreditDue = Math.max(0, activeCredits - Number(creditPaymentsMade));
 
       // Get user statistics
       const users = await storage.getAllUsers();
@@ -961,20 +972,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get top products from actual sales data
       const topProducts = await storage.getTopProductsByDate(date);
 
-      // Get detailed payment breakdown for today
-      const paymentBreakdown = await db
+      // Get detailed payment breakdown for current active session instead of date
+      const currentSession = await db
         .select({
-          method: payments.method,
-          total: sum(sql<number>`CAST(${payments.amount} AS NUMERIC)`),
+          id: barSessions.id,
+          shiftType: barSessions.shiftType,
         })
-        .from(payments)
-        .where(
-          and(
-            gte(payments.createdAt, startOfDay),
-            lt(payments.createdAt, endOfDay)
-          )
-        )
-        .groupBy(payments.method);
+        .from(barSessions)
+        .where(eq(barSessions.isActive, true))
+        .limit(1);
+
+      let paymentBreakdown = [];
+      if (currentSession.length > 0) {
+        paymentBreakdown = await db
+          .select({
+            method: payments.method,
+            total: sum(sql<number>`CAST(${payments.amount} AS NUMERIC)`),
+          })
+          .from(payments)
+          .where(eq(payments.sessionId, currentSession[0].id))
+          .groupBy(payments.method);
+      }
 
       const paymentSummary = {
         cash: 0,
@@ -990,7 +1008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         else if (p.method === 'credit') paymentSummary.credit = Number(p.total);
       });
 
-      // Get session history with real payment data
+      // Get session history with real payment data and proper user mapping
       const sessionHistory = await Promise.all(
         sessions.slice(0, 10).map(async (s) => {
           // Get payments for this session
@@ -1006,14 +1024,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
             (sum, payment) => sum + parseFloat(payment.amount || "0"),
             0
           );
+
+          // Get user info from session
+          const sessionUser = await db
+            .select({
+              firstName: users.firstName,
+              lastName: users.lastName,
+            })
+            .from(users)
+            .where(eq(users.id, s.userId))
+            .limit(1);
+          
+          const userInfo = sessionUser[0];
+          const userName = userInfo?.firstName && userInfo?.lastName 
+            ? `${userInfo.firstName} ${userInfo.lastName}` 
+            : s.userId || "Usuário";
           
           return {
             id: s.id,
             date: new Date(s.createdAt!).toLocaleDateString("pt-PT"),
             shift: s.shiftType === "morning" ? "Manhã" : "Tarde",
-            user: s.user?.firstName && s.user?.lastName 
-              ? `${s.user.firstName} ${s.user.lastName}` 
-              : s.userId || "Usuário",
+            user: userName,
             sales: sessionSales.toFixed(2),
             transactions: sessionPayments.length,
           };
@@ -1035,7 +1066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         weeklySales: totalSales.toFixed(2), // Only show real daily data
         monthlySales: totalSales.toFixed(2), // Only show real daily data
-        activeCredits: activeCredits.toFixed(2),
+        activeCredits: actualCreditDue.toFixed(2),
         totalUsers: users.length,
         activeUsers,
         totalProducts: products.length,
