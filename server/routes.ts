@@ -16,7 +16,7 @@ import {
   barSessions,
   payments,
 } from "@shared/schema";
-import { and, eq, gte, lt } from "drizzle-orm";
+import { and, eq, gte, lt, sql, sum, count, desc, asc } from "drizzle-orm";
 
 // Enhanced auth middleware for production
 const requireAuth = (req: any, res: any, next: any) => {
@@ -965,7 +965,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const paymentBreakdown = await db
         .select({
           method: payments.method,
-          total: sql<number>`SUM(CAST(${payments.amount} AS NUMERIC))`,
+          total: sum(sql<number>`CAST(${payments.amount} AS NUMERIC)`),
         })
         .from(payments)
         .where(

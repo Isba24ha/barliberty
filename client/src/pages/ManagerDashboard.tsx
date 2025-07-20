@@ -24,7 +24,10 @@ import {
   Clock,
   Plus,
   Edit,
-  Trash2
+  Trash2,
+  Activity,
+  AlertTriangle,
+  CreditCard
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
@@ -558,7 +561,85 @@ export default function ManagerDashboard() {
         </TabsContent>
 
         {/* Sales Tab */}
-        <TabsContent value="sales" className="space-y-4">
+        <TabsContent value="sales" className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-white">Vendas Manhã</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white">{managerStats?.dailySales?.morning || "0.00"} F CFA</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-white">Vendas Tarde</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white">{managerStats?.dailySales?.evening || "0.00"} F CFA</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-white">Total do Dia</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white">{managerStats?.dailySales?.total || "0.00"} F CFA</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-white">Stock Baixo</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-400">{lowStockProducts?.length || 0}</div>
+                <p className="text-xs text-gray-400">
+                  produtos em alerta
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Payment Breakdown Section */}
+          <Card className="bg-gray-800 border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Breakdown de Pagamentos - {selectedDate}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-green-400">💵 Dinheiro</p>
+                  <p className="text-2xl font-bold text-white">{managerStats?.paymentBreakdown?.cash || "0.00"} F CFA</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-blue-400">📱 Mobile</p>
+                  <p className="text-2xl font-bold text-white">{managerStats?.paymentBreakdown?.mobile || "0.00"} F CFA</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-purple-400">💳 Cartão</p>
+                  <p className="text-2xl font-bold text-white">{managerStats?.paymentBreakdown?.card || "0.00"} F CFA</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-orange-400">📝 Crédito</p>
+                  <p className="text-2xl font-bold text-white">{managerStats?.paymentBreakdown?.credit || "0.00"} F CFA</p>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-gray-600">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-semibold text-white">Total:</span>
+                  <span className="text-2xl font-bold text-green-400">{managerStats?.paymentBreakdown?.total || "0.00"} F CFA</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
               <CardTitle className="text-white flex items-center">
