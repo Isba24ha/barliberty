@@ -1008,48 +1008,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         else if (p.method === 'credit') paymentSummary.credit = Number(p.total);
       });
 
-      // Get session history with real payment data and proper user mapping
-      const sessionHistory = await Promise.all(
-        sessions.slice(0, 10).map(async (s) => {
-          // Get payments for this session
-          const sessionPayments = await db
-            .select({
-              amount: payments.amount,
-              method: payments.method,
-            })
-            .from(payments)
-            .where(eq(payments.sessionId, s.id));
-          
-          const sessionSales = sessionPayments.reduce(
-            (sum, payment) => sum + parseFloat(payment.amount || "0"),
-            0
-          );
+      // Get session history with detailed query using JOIN for better performance
+      const sessionHistoryRaw = await db
+        .select({
+          sessionId: barSessions.id,
+          userId: barSessions.userId,
+          shiftType: barSessions.shiftType,
+          createdAt: barSessions.createdAt,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          paymentAmount: payments.amount,
+          paymentId: payments.id,
+        })
+        .from(barSessions)
+        .leftJoin(users, eq(barSessions.userId, users.id))
+        .leftJoin(payments, eq(payments.sessionId, barSessions.id))
+        .orderBy(desc(barSessions.createdAt))
+        .limit(50); // Get more rows to handle the grouping
 
-          // Get user info from session
-          const sessionUser = await db
-            .select({
-              firstName: users.firstName,
-              lastName: users.lastName,
-            })
-            .from(users)
-            .where(eq(users.id, s.userId))
-            .limit(1);
-          
-          const userInfo = sessionUser[0];
-          const userName = userInfo?.firstName && userInfo?.lastName 
-            ? `${userInfo.firstName} ${userInfo.lastName}` 
-            : s.userId || "Usuário";
+      // Group payments by session
+      const sessionMap = new Map();
+      
+      sessionHistoryRaw.forEach(row => {
+        const sessionId = row.sessionId;
+        if (!sessionMap.has(sessionId)) {
+          sessionMap.set(sessionId, {
+            id: sessionId,
+            userId: row.userId,
+            shiftType: row.shiftType,
+            createdAt: row.createdAt,
+            firstName: row.firstName,
+            lastName: row.lastName,
+            payments: [],
+          });
+        }
+        
+        if (row.paymentId && row.paymentAmount) {
+          sessionMap.get(sessionId).payments.push({
+            amount: parseFloat(row.paymentAmount),
+          });
+        }
+      });
+
+      // Convert to final format
+      const sessionHistory = Array.from(sessionMap.values())
+        .slice(0, 10)
+        .map(session => {
+          const totalSales = session.payments.reduce((sum, p) => sum + p.amount, 0);
+          const userName = session.firstName && session.lastName 
+            ? `${session.firstName} ${session.lastName}` 
+            : session.userId || "Usuário";
           
           return {
-            id: s.id,
-            date: new Date(s.createdAt!).toLocaleDateString("pt-PT"),
-            shift: s.shiftType === "morning" ? "Manhã" : "Tarde",
+            id: session.id,
+            date: new Date(session.createdAt!).toLocaleDateString("pt-PT"),
+            shift: session.shiftType === "morning" ? "Manhã" : "Tarde",
             user: userName,
-            sales: sessionSales.toFixed(2),
-            transactions: sessionPayments.length,
+            sales: totalSales.toFixed(2),
+            transactions: session.payments.length,
           };
-        })
-      );
+        });
 
       const managerStats = {
         dailySales: {
