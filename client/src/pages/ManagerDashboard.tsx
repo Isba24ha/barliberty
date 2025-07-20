@@ -110,9 +110,10 @@ export default function ManagerDashboard() {
 
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
   const [selectedCreditClientId, setSelectedCreditClientId] = useState<number | null>(null);
+  const [showSessionModal, setShowSessionModal] = useState(false);
 
   const { data: sessionDetails } = useQuery({
-    queryKey: ["/api/manager/session", selectedSessionId, "details"],
+    queryKey: ["/api/manager/session-details", selectedSessionId],
     enabled: !!selectedSessionId,
   });
 
@@ -360,6 +361,7 @@ export default function ManagerDashboard() {
 
   const handleViewSessionDetails = (sessionId: number) => {
     setSelectedSessionId(sessionId);
+    setShowSessionModal(true);
   };
 
   const handleViewCreditDetails = (clientId: number) => {
@@ -1169,6 +1171,173 @@ export default function ManagerDashboard() {
                     ))}
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Session Details Modal */}
+      <Dialog open={showSessionModal} onOpenChange={setShowSessionModal}>
+        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-white">
+              Detalhes da Sessão #{selectedSessionId}
+            </DialogTitle>
+          </DialogHeader>
+          {sessionDetails && (
+            <div className="space-y-6">
+              {/* Session Summary */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <p className="text-sm text-gray-400">Data</p>
+                      <p className="text-lg font-semibold text-white">{sessionDetails.date}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <p className="text-sm text-gray-400">Turno</p>
+                      <p className="text-lg font-semibold text-blue-400">{sessionDetails.shiftType}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <p className="text-sm text-gray-400">Caixa</p>
+                      <p className="text-lg font-semibold text-green-400">{sessionDetails.cashier}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardContent className="p-4">
+                    <div className="text-center">
+                      <p className="text-sm text-gray-400">Status</p>
+                      <Badge variant={sessionDetails.isActive ? "default" : "secondary"}>
+                        {sessionDetails.isActive ? "Ativa" : "Fechada"}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Financial Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-400">Total de Vendas</p>
+                        <p className="text-2xl font-bold text-green-400">
+                          {formatCurrency(sessionDetails.totalSales)}
+                        </p>
+                      </div>
+                      <DollarSign className="w-8 h-8 text-green-400" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-400">Transações</p>
+                        <p className="text-2xl font-bold text-blue-400">{sessionDetails.transactionCount}</p>
+                      </div>
+                      <Activity className="w-8 h-8 text-blue-400" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-400">Horário</p>
+                        <p className="text-lg font-semibold text-orange-400">
+                          {sessionDetails.startTime} - {sessionDetails.endTime}
+                        </p>
+                      </div>
+                      <Clock className="w-8 h-8 text-orange-400" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Payment Methods Breakdown */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center">
+                    <CreditCard className="w-5 h-5 mr-2" />
+                    Métodos de Pagamento
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {Object.entries(sessionDetails.paymentBreakdown || {}).map(([method, data]: [string, any]) => {
+                      const methodNames = {
+                        cash: "Dinheiro",
+                        mobile_money: "Mobile Money",
+                        credit: "Crédito", 
+                        partial: "Parcial"
+                      };
+                      return (
+                        <div key={method} className="text-center p-3 bg-gray-700 rounded-lg">
+                          <p className="text-sm text-gray-400">{methodNames[method as keyof typeof methodNames] || method}</p>
+                          <p className="text-lg font-semibold text-white">{formatCurrency(data.total.toString())}</p>
+                          <p className="text-xs text-gray-500">{data.count} transações</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Recent Orders */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center">
+                    <ShoppingCart className="w-5 h-5 mr-2" />
+                    Pedidos da Sessão ({sessionDetails.orders?.length || 0})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="max-h-64 overflow-y-auto space-y-2">
+                    {sessionDetails.orders?.map((order: any) => (
+                      <div key={order.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                        <div className="flex-1">
+                          <p className="text-white font-medium">Mesa {order.tableId} - {order.clientName || "Cliente"}</p>
+                          <p className="text-sm text-gray-400">
+                            {new Date(order.createdAt).toLocaleString('pt-PT')} | Status: {order.status}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-semibold text-green-400">{formatCurrency(order.totalPrice)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-4 pt-4 border-t border-gray-700">
+                <Button 
+                  onClick={() => handleExportSession(selectedSessionId!)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Exportar Relatório
+                </Button>
+                <Button 
+                  onClick={() => setShowSessionModal(false)}
+                  variant="outline"
+                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                >
+                  Fechar
+                </Button>
               </div>
             </div>
           )}
