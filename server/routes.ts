@@ -894,16 +894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all sessions for session history (not just today's sessions)
       console.log("[DEBUG] About to execute sessions query");
       const sessions = await db
-        .select({
-          id: barSessions.id,
-          userId: barSessions.userId,
-          shiftType: barSessions.shiftType,
-          createdAt: barSessions.createdAt,
-          endedAt: barSessions.endedAt,
-          isActive: barSessions.isActive,
-          totalSales: barSessions.totalSales,
-          transactionCount: barSessions.transactionCount
-        })
+        .select()
         .from(barSessions)
         .orderBy(desc(barSessions.createdAt))
         .limit(20);
@@ -1064,10 +1055,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let userName = session.userId || "Usuário";
             try {
               const sessionUser = await db
-                .select({
-                  firstName: users.firstName,
-                  lastName: users.lastName,
-                })
+                .select()
                 .from(users)
                 .where(eq(users.id, session.userId))
                 .limit(1);
