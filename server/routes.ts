@@ -13,8 +13,16 @@ import {
   insertOrderItemSchema,
   insertPaymentSchema,
   insertAbsenceSchema,
-  barSessions,
-  payments,
+  products, 
+  orders, 
+  orderItems, 
+  categories, 
+  tables, 
+  payments, 
+  barSessions, 
+  users, 
+  creditClients, 
+  absences
 } from "@shared/schema";
 import { and, eq, gte, lt, sql, sum, count, desc, asc } from "drizzle-orm";
 
@@ -1008,55 +1016,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         else if (p.method === 'credit') paymentSummary.credit = Number(p.total);
       });
 
-      // Get session history with detailed query using JOIN for better performance
-      const sessionHistoryRaw = await db
-        .select({
-          sessionId: barSessions.id,
-          userId: barSessions.userId,
-          shiftType: barSessions.shiftType,
-          createdAt: barSessions.createdAt,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          paymentAmount: payments.amount,
-          paymentId: payments.id,
-        })
-        .from(barSessions)
-        .leftJoin(users, eq(barSessions.userId, users.id))
-        .leftJoin(payments, eq(payments.sessionId, barSessions.id))
-        .orderBy(desc(barSessions.createdAt))
-        .limit(50); // Get more rows to handle the grouping
+      // Get session history - simplified approach to avoid Drizzle JOIN issues
+      const sessionHistory = await Promise.all(
+        sessions.slice(0, 10).map(async (session) => {
+          // Get payments for this session
+          const sessionPayments = await db
+            .select({
+              amount: payments.amount,
+            })
+            .from(payments)
+            .where(eq(payments.sessionId, session.id));
+          
+          const sessionSales = sessionPayments.reduce(
+            (sum, payment) => sum + parseFloat(payment.amount || "0"),
+            0
+          );
 
-      // Group payments by session
-      const sessionMap = new Map();
-      
-      sessionHistoryRaw.forEach(row => {
-        const sessionId = row.sessionId;
-        if (!sessionMap.has(sessionId)) {
-          sessionMap.set(sessionId, {
-            id: sessionId,
-            userId: row.userId,
-            shiftType: row.shiftType,
-            createdAt: row.createdAt,
-            firstName: row.firstName,
-            lastName: row.lastName,
-            payments: [],
-          });
-        }
-        
-        if (row.paymentId && row.paymentAmount) {
-          sessionMap.get(sessionId).payments.push({
-            amount: parseFloat(row.paymentAmount),
-          });
-        }
-      });
-
-      // Convert to final format
-      const sessionHistory = Array.from(sessionMap.values())
-        .slice(0, 10)
-        .map(session => {
-          const totalSales = session.payments.reduce((sum, p) => sum + p.amount, 0);
-          const userName = session.firstName && session.lastName 
-            ? `${session.firstName} ${session.lastName}` 
+          // Get user info
+          const sessionUser = await db
+            .select({
+              firstName: users.firstName,
+              lastName: users.lastName,
+            })
+            .from(users)
+            .where(eq(users.id, session.userId))
+            .limit(1);
+          
+          const userInfo = sessionUser[0];
+          const userName = userInfo?.firstName && userInfo?.lastName 
+            ? `${userInfo.firstName} ${userInfo.lastName}` 
             : session.userId || "Usuário";
           
           return {
@@ -1064,10 +1052,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             date: new Date(session.createdAt!).toLocaleDateString("pt-PT"),
             shift: session.shiftType === "morning" ? "Manhã" : "Tarde",
             user: userName,
-            sales: totalSales.toFixed(2),
-            transactions: session.payments.length,
+            sales: sessionSales.toFixed(2),
+            transactions: sessionPayments.length,
           };
-        });
+        })
+      );
 
       const managerStats = {
         dailySales: {
