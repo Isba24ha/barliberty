@@ -44,11 +44,11 @@ export function Sidebar() {
   const getNavigationItems = () => {
     if (user?.role === "manager") {
       return [
-        { href: "/", icon: PieChart, label: "Tableau de Bord" },
-        { href: "/inventory", icon: Package, label: "Gestion Stock" },
-        { href: "/credits", icon: CreditCard, label: "Crédits" },
-        { href: "/sales-history", icon: FileText, label: "Historique Ventes" },
-        { href: "/stats", icon: TrendingUp, label: "Statistiques" },
+        { href: "/", icon: PieChart, label: "Painel de Controlo" },
+        { href: "/inventory", icon: Package, label: "Gestão de Stock" },
+        { href: "/credits", icon: CreditCard, label: "Clientes Crédito" },
+        { href: "/sales-history", icon: FileText, label: "Histórico de Vendas" },
+        { href: "/stats", icon: TrendingUp, label: "Estatísticas" },
       ];
     } else {
       return [

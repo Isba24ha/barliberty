@@ -878,7 +878,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/manager/stats/daily/:date", requireAuth, async (req, res) => {
     try {
       if (req.user.role !== "manager") {
-        return res.status(403).json({ message: "Accès interdit" });
+        return res.status(403).json({ message: "Acesso negado" });
       }
 
       const { date } = req.params;
@@ -1005,7 +1005,217 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(managerStats);
     } catch (error) {
       console.error("Error fetching manager stats:", error);
-      res.status(500).json({ message: "Erreur lors de la récupération des statistiques" });
+      res.status(500).json({ message: "Erro ao buscar estatísticas" });
+    }
+  });
+
+  // New enhanced session details route
+  app.get("/api/manager/session/:id/details", requireAuth, requireRole(["manager"]), async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.id);
+      
+      // Get session info
+      const session = await storage.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: "Sessão não encontrada" });
+      }
+
+      // Get all payments for this session with payment method breakdown
+      const sessionPayments = await db
+        .select({
+          method: payments.method,
+          amount: payments.amount,
+          createdAt: payments.createdAt,
+        })
+        .from(payments)
+        .where(eq(payments.sessionId, sessionId));
+
+      // Calculate payment method totals
+      const paymentBreakdown = {
+        cash: 0,
+        card: 0,
+        credit: 0,
+        total: 0,
+      };
+
+      sessionPayments.forEach(payment => {
+        const amount = parseFloat(payment.amount);
+        paymentBreakdown.total += amount;
+        
+        switch (payment.method) {
+          case 'cash':
+            paymentBreakdown.cash += amount;
+            break;
+          case 'card':
+            paymentBreakdown.card += amount;
+            break;
+          case 'credit':
+            paymentBreakdown.credit += amount;
+            break;
+        }
+      });
+
+      res.json({
+        session: {
+          id: session.id,
+          date: session.createdAt.toISOString().split('T')[0],
+          shift: session.shiftType === "morning" ? "Manhã" : "Tarde",
+          user: `${session.user?.firstName || ''} ${session.user?.lastName || ''}`.trim() || session.userId,
+          startTime: session.createdAt,
+          endTime: session.endedAt,
+          sales: session.totalSales || "0.00",
+          transactions: session.transactionCount || 0,
+        },
+        paymentBreakdown: {
+          cash: paymentBreakdown.cash.toFixed(2),
+          card: paymentBreakdown.card.toFixed(2),
+          credit: paymentBreakdown.credit.toFixed(2),
+          total: paymentBreakdown.total.toFixed(2),
+        },
+        payments: sessionPayments.map(p => ({
+          method: p.method,
+          amount: p.amount,
+          time: p.createdAt,
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching session details:", error);
+      res.status(500).json({ message: "Erro ao buscar detalhes da sessão" });
+    }
+  });
+
+  // Low stock products route
+  app.get("/api/manager/low-stock", requireAuth, requireRole(["manager"]), async (req, res) => {
+    try {
+      const products = await storage.getAllProducts();
+      const lowStockProducts = products.filter(p => 
+        p.stockQuantity !== null && 
+        p.minStockLevel !== null && 
+        p.stockQuantity <= p.minStockLevel &&
+        p.isActive
+      );
+
+      res.json(lowStockProducts.map(p => ({
+        id: p.id,
+        name: p.name,
+        currentStock: p.stockQuantity,
+        minStock: p.minStockLevel,
+        category: p.categoryId,
+        price: p.price,
+        status: p.stockQuantity === 0 ? 'out_of_stock' : 'low_stock',
+      })));
+    } catch (error) {
+      console.error("Error fetching low stock products:", error);
+      res.status(500).json({ message: "Erro ao buscar produtos com stock baixo" });
+    }
+  });
+
+  // Credit client details route
+  app.get("/api/manager/credit-client/:id/details", requireAuth, requireRole(["manager"]), async (req, res) => {
+    try {
+      const clientId = parseInt(req.params.id);
+      
+      // Get credit client
+      const client = await storage.getCreditClient(clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Cliente não encontrado" });
+      }
+
+      // Get all credit payments for this client
+      const creditPayments = await db
+        .select({
+          amount: payments.amount,
+          createdAt: payments.createdAt,
+          sessionId: payments.sessionId,
+        })
+        .from(payments)
+        .where(
+          and(
+            eq(payments.creditClientId, clientId),
+            eq(payments.method, 'credit')
+          )
+        );
+
+      // Get payment history (when client paid back)
+      const paymentHistory = await db
+        .select({
+          amount: payments.amount,
+          createdAt: payments.createdAt,
+        })
+        .from(payments)
+        .where(
+          and(
+            eq(payments.creditClientId, clientId),
+            eq(payments.method, 'cash') // Assuming cash payments are paybacks
+          )
+        );
+
+      res.json({
+        client: {
+          id: client.id,
+          name: client.name,
+          email: client.email,
+          phone: client.phone,
+          totalCredit: client.totalCredit,
+          isActive: client.isActive,
+        },
+        creditHistory: creditPayments.map(p => ({
+          amount: p.amount,
+          date: p.createdAt,
+          sessionId: p.sessionId,
+          type: 'credit_given',
+        })),
+        paymentHistory: paymentHistory.map(p => ({
+          amount: p.amount,
+          date: p.createdAt,
+          type: 'payment_received',
+        })),
+        summary: {
+          totalCreditGiven: creditPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0).toFixed(2),
+          totalPaymentsReceived: paymentHistory.reduce((sum, p) => sum + parseFloat(p.amount), 0).toFixed(2),
+          outstandingBalance: client.totalCredit,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching credit client details:", error);
+      res.status(500).json({ message: "Erro ao buscar detalhes do cliente" });
+    }
+  });
+
+  // Export session data route
+  app.get("/api/manager/export/session/:id", requireAuth, requireRole(["manager"]), async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.id);
+      
+      // Get session details (reuse the logic from session details route)
+      const session = await storage.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: "Sessão não encontrada" });
+      }
+
+      const sessionPayments = await db
+        .select({
+          method: payments.method,
+          amount: payments.amount,
+          createdAt: payments.createdAt,
+        })
+        .from(payments)
+        .where(eq(payments.sessionId, sessionId));
+
+      // Create CSV data
+      const csvData = [
+        'Data,Método,Valor,Hora',
+        ...sessionPayments.map(p => 
+          `${session.createdAt.toISOString().split('T')[0]},${p.method},${p.amount},${p.createdAt.toISOString()}`
+        )
+      ].join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="sessao_${sessionId}_${session.createdAt.toISOString().split('T')[0]}.csv"`);
+      res.send(csvData);
+    } catch (error) {
+      console.error("Error exporting session data:", error);
+      res.status(500).json({ message: "Erro ao exportar dados da sessão" });
     }
   });
 

@@ -184,6 +184,27 @@ export const PT = {
     night: "Madrugada",
   },
 
+  // Manager functions
+  manager: {
+    dashboard: "Painel de Gestão",
+    userManagement: "Gestão de Utilizadores",
+    inventoryManagement: "Gestão de Inventário",
+    salesReports: "Relatórios de Vendas",
+    statistics: "Estatísticas",
+    sessionDetails: "Detalhes da Sessão",
+    downloadReport: "Descarregar Relatório",
+    stockAlert: "Alerta de Stock",
+    lowStockProducts: "Produtos com Stock Baixo",
+    creditDetails: "Detalhes de Crédito",
+    paymentHistory: "Histórico de Pagamentos",
+    sessionSales: "Vendas por Sessão",
+    paymentMethods: "Métodos de Pagamento",
+    totalCash: "Total Dinheiro",
+    totalCard: "Total Cartão",
+    totalCredit: "Total Crédito",
+    exportData: "Exportar Dados",
+  },
+
   // Messages
   messages: {
     loginSuccess: "Login realizado com sucesso",
