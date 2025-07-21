@@ -712,14 +712,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Não é possível adicionar itens a um pedido já pago" });
       }
 
-      // Process each new item - check for existing items with same productId
+      // Process each new item - check for existing items with same productId using direct SQL query
       const addedItems = [];
       for (const newItem of items) {
-        // Check if this product already exists in the order
-        const existingItem = order.items.find(item => item.productId === newItem.productId);
+        // Check if this product already exists in the order using direct database query
+        const existingItems = await db
+          .select()
+          .from(orderItems)
+          .where(and(
+            eq(orderItems.orderId, orderId),
+            eq(orderItems.productId, newItem.productId)
+          ));
         
-        if (existingItem) {
-          // Update the existing item by increasing quantity
+        if (existingItems.length > 0) {
+          // Update the first existing item by increasing quantity (consolidate all into one)
+          const existingItem = existingItems[0];
           const newQuantity = existingItem.quantity + newItem.quantity;
           const newTotalPrice = (parseFloat(newItem.price) * newQuantity).toFixed(2);
           
@@ -728,6 +735,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalPrice: newTotalPrice
           });
           addedItems.push(updatedItem);
+          
+          // Remove any duplicate items for the same product (if they exist)
+          if (existingItems.length > 1) {
+            for (let i = 1; i < existingItems.length; i++) {
+              await db.delete(orderItems).where(eq(orderItems.id, existingItems[i].id));
+            }
+          }
         } else {
           // Add new item
           const itemData = {
