@@ -79,7 +79,37 @@ export default function SalesHistory() {
 
   const handlePrintReceipt = async (order: OrderWithItems) => {
     try {
-      await thermalPrinter.printReceipt(order);
+      // Convert order data to receipt format
+      const receiptData = {
+        orderNumber: order.id.toString(),
+        tableName: `Mesa ${order.table?.number || order.tableId}`,
+        clientName: order.clientName || order.creditClient?.name,
+        items: order.items.map((item: any) => ({
+          name: item.product?.name || 'Produto',
+          quantity: item.quantity,
+          price: `${parseFloat(item.unitPrice || 0).toFixed(0)}`,
+          total: `${parseFloat(item.totalPrice || 0).toFixed(0)}`
+        })),
+        subtotal: `${parseFloat(order.totalAmount).toFixed(0)}`,
+        total: `${parseFloat(order.totalAmount).toFixed(0)}`,
+        paymentMethod: order.payments?.[0]?.method === "cash" ? "Dinheiro" : 
+                      order.payments?.[0]?.method === "mobile_money" ? "Mobile Money" : 
+                      order.payments?.[0]?.method === "credit" ? "Crédito" : "Desconhecido",
+        receivedAmount: order.payments?.[0]?.receivedAmount ? 
+          `${parseFloat(order.payments[0].receivedAmount).toFixed(0)}` : undefined,
+        change: order.payments?.[0]?.changeAmount ? 
+          `${parseFloat(order.payments[0].changeAmount).toFixed(0)}` : undefined,
+        cashier: order.server?.firstName || 'Servidor',
+        timestamp: new Date(order.createdAt).toLocaleString('pt-PT', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric', 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        })
+      };
+
+      await thermalPrinter.printReceipt(receiptData);
       toast({
         title: "Sucesso",
         description: "Recibo enviado para impressão",

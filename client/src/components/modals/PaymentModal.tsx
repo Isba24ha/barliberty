@@ -41,7 +41,41 @@ export function PaymentModal() {
       // Print receipt automatically after payment
       if (selectedOrder) {
         try {
-          await thermalPrinter.printReceipt(selectedOrder);
+          // Get table information
+          const table = await queryClient.getQueryData(["/api/tables"]) as any[];
+          const tableInfo = table?.find(t => t.id === selectedOrder.tableId);
+          
+          // Get cashier info (assume current user from auth)
+          const userData = await queryClient.getQueryData(["/api/auth/user"]) as any;
+          
+          // Convert order data to receipt format
+          const receiptData = {
+            orderNumber: selectedOrder.id.toString(),
+            tableName: `Mesa ${tableInfo?.number || selectedOrder.tableId}`,
+            clientName: selectedOrder.clientName || selectedOrder.creditClient?.name,
+            items: selectedOrder.items.map((item: any) => ({
+              name: item.product?.name || 'Produto',
+              quantity: item.quantity,
+              price: `${parseFloat(item.unitPrice || 0).toFixed(0)}`,
+              total: `${parseFloat(item.totalPrice || 0).toFixed(0)}`
+            })),
+            subtotal: `${parseFloat(selectedOrder.totalAmount).toFixed(0)}`,
+            total: `${parseFloat(selectedOrder.totalAmount).toFixed(0)}`,
+            paymentMethod: paymentMethod === "cash" ? "Dinheiro" : 
+                          paymentMethod === "mobile_money" ? "Mobile Money" : "Crédito",
+            receivedAmount: receivedAmount ? `${parseFloat(receivedAmount).toFixed(0)}` : undefined,
+            change: receivedAmount ? `${(parseFloat(receivedAmount) - parseFloat(selectedOrder.totalAmount)).toFixed(0)}` : undefined,
+            cashier: userData?.firstName || 'Caixa',
+            timestamp: new Date().toLocaleString('pt-PT', { 
+              day: '2-digit', 
+              month: '2-digit', 
+              year: 'numeric', 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })
+          };
+
+          await thermalPrinter.printReceipt(receiptData);
           toast({
             title: "Recibo Impresso",
             description: "Recibo enviado para impressão",
