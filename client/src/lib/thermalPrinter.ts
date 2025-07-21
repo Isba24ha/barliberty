@@ -157,7 +157,11 @@ class ThermalPrinter {
       await this.writeCommand(this.COMMANDS.ALIGN_CENTER);
       await this.writeText('Obrigado pela preferencia!\n');
       await this.writeText('Volte sempre!\n');
-      await this.writeText('\n\n');
+      await this.writeText('\n');
+      await this.writeCommand(this.COMMANDS.BOLD_ON);
+      await this.writeText('Liberty, THE PLACE TO BE!!!\n');
+      await this.writeCommand(this.COMMANDS.BOLD_OFF);
+      await this.writeText('\n');
       
       // Cut paper
       await this.writeCommand(this.COMMANDS.CUT_PAPER);
@@ -189,12 +193,21 @@ class ThermalPrinter {
             .bold { font-weight: bold; }
             .large { font-size: 16px; }
             .line { border-bottom: 1px dashed #000; margin: 5px 0; }
+            .logo { 
+              width: 40mm; 
+              height: auto; 
+              margin: 0 auto 5px; 
+              display: block; 
+            }
             @media print {
               body { margin: 0; padding: 0; }
             }
           </style>
         </head>
         <body>
+          <div class="center">
+            <img src="/liberty-logo.jpg" alt="LIBERTY Logo" class="logo" />
+          </div>
           <div class="center bold large">LIBERTY</div>
           <div class="center">Cafe - Bar - Lounge</div>
           <div class="line"></div>
@@ -223,6 +236,8 @@ class ThermalPrinter {
           <br>
           <div class="center">Obrigado pela preferencia!</div>
           <div class="center">Volte sempre!</div>
+          <br>
+          <div class="center bold">Liberty, THE PLACE TO BE!!!</div>
         </body>
         </html>
       `;
@@ -275,6 +290,8 @@ ${receipt.receivedAmount ? `Recebido: ${receipt.receivedAmount} F CFA\n` : ''}${
 
 Obrigado pela preferencia!
 Volte sempre!
+
+Liberty, THE PLACE TO BE!!!
     `;
 
     const blob = new Blob([receiptText], { type: 'text/plain' });
