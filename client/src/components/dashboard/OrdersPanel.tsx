@@ -22,8 +22,9 @@ export function OrdersPanel() {
     setShowPaymentModal(true);
   };
 
-  const formatTime = (date: string) => {
-    return new Date(date).toLocaleTimeString("fr-FR", {
+  const formatTime = (date: string | Date) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return dateObj.toLocaleTimeString("fr-FR", {
       hour: "2-digit",
       minute: "2-digit",
     });
