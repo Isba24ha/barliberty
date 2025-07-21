@@ -712,18 +712,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Não é possível adicionar itens a um pedido já pago" });
       }
 
-      // Add each item to the order
+      // Process each new item - check for existing items with same productId
       const addedItems = [];
-      for (const item of items) {
-        const itemData = {
-          orderId,
-          productId: item.productId,
-          quantity: item.quantity,
-          unitPrice: item.price,
-          totalPrice: (parseFloat(item.price) * item.quantity).toFixed(2),
-        };
-        const addedItem = await storage.addOrderItem(itemData);
-        addedItems.push(addedItem);
+      for (const newItem of items) {
+        // Check if this product already exists in the order
+        const existingItem = order.items.find(item => item.productId === newItem.productId);
+        
+        if (existingItem) {
+          // Update the existing item by increasing quantity
+          const newQuantity = existingItem.quantity + newItem.quantity;
+          const newTotalPrice = (parseFloat(newItem.price) * newQuantity).toFixed(2);
+          
+          const updatedItem = await storage.updateOrderItem(existingItem.id, {
+            quantity: newQuantity,
+            totalPrice: newTotalPrice
+          });
+          addedItems.push(updatedItem);
+        } else {
+          // Add new item
+          const itemData = {
+            orderId,
+            productId: newItem.productId,
+            quantity: newItem.quantity,
+            unitPrice: newItem.price,
+            totalPrice: (parseFloat(newItem.price) * newItem.quantity).toFixed(2),
+          };
+          const addedItem = await storage.addOrderItem(itemData);
+          addedItems.push(addedItem);
+        }
       }
 
       // Update order total amount

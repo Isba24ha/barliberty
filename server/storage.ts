@@ -80,6 +80,7 @@ export interface IStorage {
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrder(id: number, order: Partial<InsertOrder>): Promise<void>;
   addOrderItem(item: InsertOrderItem): Promise<OrderItem>;
+  updateOrderItem(id: number, item: Partial<InsertOrderItem>): Promise<OrderItem>;
   
   // Payment operations
   createPayment(payment: InsertPayment): Promise<Payment>;
@@ -440,6 +441,15 @@ export class DatabaseStorage implements IStorage {
 
   async addOrderItem(itemData: InsertOrderItem): Promise<OrderItem> {
     const [item] = await db.insert(orderItems).values(itemData).returning();
+    return item;
+  }
+
+  async updateOrderItem(id: number, itemData: Partial<InsertOrderItem>): Promise<OrderItem> {
+    const [item] = await db
+      .update(orderItems)
+      .set(itemData)
+      .where(eq(orderItems.id, id))
+      .returning();
     return item;
   }
 
