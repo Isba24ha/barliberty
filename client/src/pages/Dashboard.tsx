@@ -8,6 +8,7 @@ import { OrdersPanel } from "@/components/dashboard/OrdersPanel";
 import { TablesOverview } from "@/components/dashboard/TablesOverview";
 import { CreditClientsTable } from "@/components/dashboard/CreditClientsTable";
 import { SessionControls } from "@/components/dashboard/SessionControls";
+import { StockPanel } from "@/components/dashboard/StockPanel";
 import { RefreshCw } from "lucide-react";
 import { SessionStats } from "@shared/schema";
 import { PT } from "@/lib/i18n";
@@ -59,14 +60,28 @@ export default function Dashboard() {
       {/* Stats Cards */}
       <StatsCards />
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Orders Panel */}
-        <OrdersPanel />
+      {/* Three Column Layout for Cashiers */}
+      {user?.role === "cashier" ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Orders Panel */}
+          <OrdersPanel />
 
-        {/* Tables Overview */}
-        <TablesOverview />
-      </div>
+          {/* Tables Overview */}
+          <TablesOverview />
+
+          {/* Stock Panel for Cashiers */}
+          <StockPanel />
+        </div>
+      ) : (
+        /* Two Column Layout for Servers */
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Orders Panel */}
+          <OrdersPanel />
+
+          {/* Tables Overview */}
+          <TablesOverview />
+        </div>
+      )}
 
       {/* Credits Section */}
       <div className="mt-6">

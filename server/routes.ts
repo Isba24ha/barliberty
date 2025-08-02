@@ -1396,8 +1396,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Low stock products route
-  app.get("/api/manager/low-stock", requireAuth, requireRole(["manager"]), async (req, res) => {
+  // Low stock products route - accessible by managers and cashiers
+  app.get("/api/manager/low-stock", requireAuth, requireRole(["manager", "cashier"]), async (req, res) => {
     try {
       const products = await storage.getAllProducts();
       console.log(`[DEBUG] Total products: ${products.length}`);
