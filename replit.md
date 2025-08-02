@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a full-stack bar management application built with React, Express, and PostgreSQL. The system is designed to handle multiple user roles (cashier, server, manager) with role-based permissions for managing bar operations including inventory, sales, tables, and customer credit management.
+This is a full-stack bar management application designed to streamline operations for bars, supporting multiple user roles (cashier, server, manager) with role-based permissions. It comprehensively manages inventory, sales, tables, and customer credit, aiming to enhance efficiency and provide real-time insights into bar operations. The project ambition is to deliver a robust, user-friendly system for optimized bar management.
 
 ## User Preferences
 
@@ -14,402 +14,58 @@ Printer support: EPSON thermal printer integration for receipt printing required
 ## System Architecture
 
 ### Frontend Architecture
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite for fast development and building
-- **UI Framework**: Shadcn/UI components built on Radix UI primitives
-- **Styling**: Tailwind CSS with custom design tokens
-- **State Management**: Zustand for global state management
-- **Data Fetching**: TanStack Query (React Query) for server state
-- **Routing**: Wouter for client-side routing
+- **Framework**: React 18 with TypeScript, Vite
+- **UI/Styling**: Shadcn/UI (Radix UI primitives), Tailwind CSS
+- **State Management**: Zustand, TanStack Query
+- **Routing**: Wouter
 - **Form Handling**: React Hook Form with Zod validation
 
 ### Backend Architecture
-- **Runtime**: Node.js with Express.js
-- **Language**: TypeScript with ESM modules
-- **Database**: PostgreSQL with Neon serverless driver
-- **ORM**: Drizzle ORM for type-safe database operations
+- **Runtime**: Node.js with Express.js (TypeScript, ESM)
+- **Database**: PostgreSQL (Neon serverless driver)
+- **ORM**: Drizzle ORM
 - **Session Management**: Express sessions with PostgreSQL storage
-- **Authentication**: Custom role-based authentication system
+- **Authentication**: Custom role-based authentication
 
 ### Database Design
-- **Primary Database**: PostgreSQL (configured for Neon serverless)
-- **Schema Management**: Drizzle Kit for migrations
-- **Key Tables**: users, bar_sessions, tables, products, orders, payments, credit_clients
-- **Relationships**: Properly normalized with foreign key constraints
+- **Primary Database**: PostgreSQL (Neon serverless)
+- **Schema Management**: Drizzle Kit
+- **Key Tables**: `users`, `bar_sessions`, `tables`, `products`, `orders`, `payments`, `credit_clients`
+- **Relationships**: Normalized with foreign key constraints
 - **Enums**: Role-based permissions, order statuses, payment methods
 
-## Key Components
+### Key Features
+- **Authentication & Authorization**: Three distinct user roles (Cashier, Server, Manager) with role-based access control and persistent sessions.
+- **Session Management**: Handling of morning/evening shifts and manual session closure.
+- **Order Management**: Full order lifecycle, including item addition, quantity handling, and payment processing.
+- **Credit System**: Customer credit accounts with payment tracking.
+- **Table Management**: Real-time table status updates (free, pending order, occupied) with location-based grouping.
+- **Inventory Control**: Product and stock management with CRUD operations, image upload support, stock level monitoring (min/max), and category management.
+- **Real-time Features**: Polling-based updates for orders, tables, and sessions; live dashboard with real-time statistics.
+- **Manager Dashboard**: Comprehensive analytics (sales by shift, top products, session history), user management, inventory management, and export functionality.
+- **Thermal Printer Integration**: Support for EPSON thermal printers via Web Serial API for receipt printing.
 
-### Authentication & Authorization
-- **Three User Roles**: 
-  - Cashier: Can manage payments and sessions
-  - Server: Can take orders and manage customer credits
-  - Manager: Can view statistics and manage inventory
-- **Session Management**: Role-based access control with session persistence
-- **Demo Authentication**: Simplified login for development
-
-### Business Logic Modules
-- **Session Management**: Morning/evening shifts with proper session handling
-- **Order Management**: Complete order lifecycle from creation to payment
-- **Credit System**: Customer credit accounts with payment tracking
-- **Table Management**: Real-time table status updates
-- **Inventory Control**: Product and stock management
-
-### Real-time Features
-- **Auto-refresh**: Polling-based updates for orders, tables, and sessions
-- **Live Dashboard**: Real-time statistics and metrics
-- **Status Updates**: Automatic UI updates for table and order statuses
-
-## Data Flow
-
-1. **User Authentication**: Login → Role verification → Session creation
-2. **Session Management**: Cashier opens session → Operations tracking → Session closure
-3. **Order Processing**: Server creates order → Kitchen preparation → Cashier payment
-4. **Credit Management**: Customer credit account → Partial payments → Balance tracking
-5. **Analytics**: Real-time data aggregation → Dashboard statistics → Reports
+### System Design Choices
+- **Monorepo Structure**: Shared TypeScript types and schemas for end-to-end type safety.
+- **Performance Optimization**: User caching system for rapid authentication, optimized database connection pooling.
+- **Security**: Robust session management with IP tracking, activity monitoring, and environment-based CORS configuration.
+- **UI/UX**: Consistent iconography (Lucide React), accessibility (Radix UI), and responsive design.
 
 ## External Dependencies
 
 ### Frontend Dependencies
-- **UI Components**: Radix UI primitives for accessible components
-- **Icons**: Lucide React for consistent iconography
-- **Date Handling**: date-fns for date manipulation
-- **Class Management**: clsx and tailwind-merge for conditional styling
-- **Validation**: Zod for schema validation
+- **UI Components**: Radix UI
+- **Icons**: Lucide React
+- **Date Handling**: `date-fns`
+- **Styling Utilities**: `clsx`, `tailwind-merge`
+- **Validation**: Zod
 
 ### Backend Dependencies
-- **Database**: @neondatabase/serverless for PostgreSQL connection
-- **ORM**: drizzle-orm for database operations
-- **Session Storage**: connect-pg-simple for PostgreSQL session store
-- **Development**: tsx for TypeScript execution, esbuild for production builds
+- **Database Driver**: `@neondatabase/serverless`
+- **ORM**: `drizzle-orm`
+- **Session Storage**: `connect-pg-simple`
 
 ### Development Tools
-- **Replit Integration**: Replit-specific plugins for development environment
-- **Error Handling**: Runtime error overlay for development
-- **Code Organization**: Path aliases for clean imports
-
-## Deployment Strategy
-
-### Development Setup
-- **Local Development**: Vite dev server with hot reloading
-- **Database**: Requires DATABASE_URL environment variable
-- **Session Storage**: PostgreSQL-backed session management
-- **Asset Handling**: Vite handles static assets and bundling
-
-### Production Build
-- **Frontend**: Vite builds to `dist/public` directory
-- **Backend**: esbuild bundles server code to `dist/index.js`
-- **Database Migrations**: Drizzle Kit handles schema migrations
-- **Environment**: Production mode with optimized builds
-
-### Key Configuration
-- **Database**: PostgreSQL with Neon serverless driver
-- **Session Security**: Secure session configuration required
-- **CORS**: Frontend/backend integration on same domain
-- **Static Files**: Express serves built frontend from dist/public
-
-The application follows a monorepo structure with shared TypeScript types and schemas, enabling type safety across the full stack while maintaining clear separation of concerns between frontend and backend code.
-
-## Recent Changes (July 2025)
-
-### Session Management Improvements
-- Updated session modal to remove specific time constraints (morning/evening shifts without hourly limits)
-- Sessions now remain open until manually closed by cashier
-- Automatic session detection based on current time for default shift type
-
-### Order Management Enhancements
-- Fixed order item addition for existing orders (resolving "falha ao adicionar itens ao pedido")
-- Implemented proper logic to add items to pending orders at same table
-- Updated database schema: renamed `customer_name` to `client_name` in orders table
-- Added `payment_method` field to orders table for tracking payment types
-
-### Thermal Printer Integration
-- Created comprehensive thermal printer utility (`thermalPrinter.ts`)
-- Supports EPSON thermal printers with Web Serial API
-- Fallback to print dialog and text download for unsupported browsers
-- Automatic receipt printing after payment processing
-- Manual print functionality in sales history
-- Proper receipt formatting with Portuguese text
-
-### User Interface Improvements
-- Enhanced product cards with stock level indicators (green/orange/red)
-- Added new client creation modal in order process
-- Improved stock visibility for cashiers on product selection
-- Updated navigation with dedicated sales history page
-- Added comprehensive error handling and user feedback
-
-### Tables Management Enhancement (July 2025)
-- Redesigned Tables page with location-based grouping
-- Added real-time order information display on table cards
-- Implemented visual indicators: green (free), orange (pending order), red (occupied)
-- Direct order management from table cards with "Voir" and "Ajouter" buttons
-- Enhanced table status system with pending order detection
-- Added modal dialogs for viewing order details directly from tables
-- Streamlined workflow allowing order creation and item addition from tables page
-
-### Order Management Bug Fixes (July 2025)
-- Fixed quantity handling when adding items to existing orders
-- Improved logic to handle both new products and quantity increases for existing products
-- Enhanced existing order detection and item addition workflow
-- Added proper quantity difference calculation for existing products
-- Fixed dashboard sales calculation display issues
-
-### Database Schema Updates
-- Added `address` and `notes` fields to credit_clients table
-- Updated order table column names for consistency
-- Added sample data for testing (products, tables, credit clients, users)
-- Stock tracking implementation with min/max levels
-- Added `imageUrl` field to products table for image upload support
-
-### Manager Dashboard Implementation (July 2025)
-- Created dedicated ManagerDashboard component with comprehensive business analytics
-- Implemented role-based navigation with different sidebars for managers vs cashiers/servers
-- Added sales analytics by shift (morning/evening) with detailed statistics
-- Developed manager-specific routes for user management and business metrics
-- Created tabbed interface for overview, sales, users, inventory, and reports
-- Added export functionality for daily, weekly, and monthly sales reports
-- Implemented user management with activation/deactivation capabilities
-- Added top products analysis and session history tracking
-
-### Inventory Management System (July 2025)
-- Created comprehensive inventory management page for managers
-- Implemented product CRUD operations with optional image upload
-- Added stock level monitoring with visual indicators (low/medium/high stock)
-- Developed category-based filtering and search functionality
-- Created product creation modal with image upload support
-- Added stock statistics cards showing total products, low stock alerts, and inventory value
-- Implemented grid view for products with edit/delete actions
-- Added stock status indicators with color coding for easy monitoring
-
-### Role-Based Access Control Enhancement (July 2025)
-- Strict role separation: managers restricted from order/payment operations
-- Cashiers and servers cannot access inventory management or user administration
-- Manager role redirects to specialized dashboard instead of operational dashboard
-- Different navigation menus based on user roles
-- Role-based API endpoint protection with 403 forbidden responses
-- Updated authentication middleware to enforce manager-only routes
-
-### Manager Dashboard Statistics Fix (July 2025)
-- Fixed SQL syntax error in `getTopProductsByDate` method causing statistics to show 0 F CFA
-- Added proper SQL imports and corrected column references (totalPrice instead of price)
-- Implemented comprehensive user management functionality with create/modify/block capabilities
-- Added modal interface for user creation and modification with form validation
-- Created sample data for testing statistics display (sessions, orders, credit clients)
-- Fixed manager authentication and data retrieval for real-time dashboard statistics
-- Sales statistics now properly display by shift (morning/evening) with accurate totals
-- Export functionality for daily/weekly/monthly reports with CSV download capability
-
-### Inventory Management CRUD Operations Complete (July 2025)
-- Fixed missing PUT and DELETE API routes for products causing inventory management failures
-- Implemented soft delete functionality (isActive = false) for product removal instead of hard delete
-- Added cache-busting headers and React Query configuration for real-time inventory updates
-- Corrected field mappings between database schema and frontend (stockQuantity vs stock, minStockLevel vs minStock)
-- Fixed data type validation: price field now correctly sent as string to match decimal schema
-- Removed problematic image upload functionality that was causing validation errors
-- Product creation, modification, and deletion now fully functional with proper error handling
-- Inventory display filters only active products (isActive = true) with real-time refresh
-
-### Category Management System Implementation (July 2025)
-- Added complete category management functionality for managers
-- Implemented API routes for category CRUD operations (GET, POST, PUT /api/categories)
-- Created category management UI integrated within inventory page
-- Added category creation and editing modal with form validation
-- Fixed missing insertCategorySchema import in server routes
-- Categories now properly organized with edit functionality for managers
-
-### Real Product Database Population (July 2025)
-- Completely cleaned test database (removed all test products, orders, payments)
-- Added 220 real products from business inventory list
-- Organized products across 5 categories: Bebidas (186), Comida (24), Tabaco (8), Perfumes (1), Álcool (1)
-- Set standardized stock levels: initial stock = 24, minimum stock = 10
-- Left descriptions empty for manual completion as requested
-- All products marked as active and ready for business operations
-
-### Brand Integration and Logo Implementation (July 2025)
-- Integrated official LIBERTY - Cafe - Bar - Lounge logo throughout the application
-- Created reusable Logo component with multiple sizes (sm, md, lg)
-- Updated thermal printer receipts to display "LIBERTY" and "Cafe - Bar - Lounge" branding
-- Replaced generic "BarManager Pro" branding with official business name
-- Added logo to header navigation, login page, and sidebar components
-- Configured logo asset in public directory for proper web serving
-
-### Production Database Cleanup (July 2025)
-- Removed all test transactions: payments, order_items, orders, bar_sessions, absences
-- Deleted all test credit clients to start fresh
-- Reset all sequence counters to 1 for new transactions
-- Updated all tables to 'free' status for production start
-- Maintained 220 real products and 11 users for production use
-- Cleaned orphaned references (currentOrderId) in tables
-- Confirmed authentication works: jose.barros (cashier) - Liberty@25%
-
-### Authentication Flow Improvements (July 2025)
-- Fixed login redirect issue where users needed to refresh page after login
-- Improved query cache invalidation to immediately update authentication state
-- Added automatic data prefetching after successful login
-- Enhanced useAuth hook with refetchOnWindowFocus and refetchOnMount
-- Login now redirects directly to dashboard without manual refresh
-- Cleared all cached queries on login to ensure fresh session state
-- Comprehensive testing confirmed: jose.barros (cashier) auth works perfectly
-- All API endpoints accessible post-login: products, categories, sessions, tables
-- React application properly serves authenticated dashboard interface
-- Logout system verified: proper session termination with 401 unauthorized after logout
-- Authentication routing conflicts resolved with forced redirection to dashboard
-
-### Logout and Re-login System Fix (July 2025)
-- Fixed JavaScript null reference errors across all components using safe array pattern
-- Added "Déconnexion" button with proper text and icon in header
-- Implemented comprehensive logout flow: server logout → localStorage clearing → query cache clear → page reload
-- Enhanced logout functionality to properly clear authentication state and redirect to login
-- Fixed re-login issues after logout by improving session management and page refresh handling
-- Login credentials confirmed working: milisiana/Liberty@25% for cashier role
-- Server authentication working correctly with proper session management
-- All API endpoints return 401 unauthorized after logout as expected
-
-### Frontend Redirection Fix (July 2025)
-- Resolved complex wouter routing configuration causing 404 errors at root URL
-- Simplified authentication routing to direct component rendering instead of nested Switch/Route
-- Implemented robust post-login redirection with page reload for deployment stability
-- Added comprehensive debugging for authentication state transitions
-- Fixed authentication caching issues with gcTime: 0 configuration
-- Tested login flow: milisiana/Liberty@25% successfully authenticates and redirects to dashboard
-- Frontend redirection now works correctly in both development and deployment environments
-
-### Production Database Reset (July 2025)
-- Cleaned production database of all test transactions and test clients
-- Removed all test orders, payments, bar sessions, and absences
-- Deleted all test credit clients while preserving real user accounts
-- Reset all sequence counters to start from 1 for production
-- Set all tables to 'free' status for fresh start
-- Maintained full inventory of 220 products and 11 categories
-- Preserved 11 user accounts and 33 table configurations
-- Database now ready for live production operations
-
-### Authentication and Product Display Fix (July 2025)
-- Fixed authentication synchronization between localStorage and server sessions
-- Modified useAuth hook to always validate with server (`enabled: true`)
-- Added automatic localStorage cleanup when server returns 401 unauthorized
-- Resolved product display issue by fixing field mapping in Orders.tsx (stockQuantity → stock, minStockLevel → minStock)
-- All 220 products now properly display in Orders page with correct stock levels and categories
-- Authentication system now works seamlessly across all routes (/tables, /orders, etc.)
-- API endpoints return proper 200/304 responses instead of 401 errors
-
-### Manager Credit Menu Navigation Fix (July 2025)
-- Fixed manager credit menu navigation issue - managers can now access "Clients Crédit" tab directly
-- Implemented URL-based tab detection in ManagerDashboard to automatically open correct tab
-- Added controlled tab state management with activeTab state linked to URL parameters
-- Removed automatic redirections that prevented manager access to credit and statistics pages
-- Enhanced tab navigation: /credits opens "Clients Crédit" tab, /stats opens "Ventes" tab
-- Session history now displays accurate payment data (15,000 F CFA morning, 1,000 F CFA evening)
-- Managers can now seamlessly navigate between overview, sales, inventory, and credit management
-
-### Production Database Cleanup (July 2025)
-- Removed all test data: "Client Test", "Nouveau Client Test" and associated orders
-- Deleted test transactions: 4 orders, 2 order_items, 4 payments from test clients
-- Removed test sessions: 3 bar_sessions with no real transaction data
-- Reset all sequence counters to 1 for clean production start
-- Maintained real client data: only "CARL MALACK" remains in credit_clients
-- Current session (ID: 4) remains active for ongoing operations
-- Database now clean and ready for production use with proper sequence numbering
-
-### Login Performance Optimization (July 2025)
-- Dramatically improved login speed from 2.4 seconds to 0.042 seconds (98% improvement)
-- Implemented user cache system that preloads all 11 users at server startup
-- Added Map-based credential lookup for faster authentication validation
-- Optimized session validation to use cached user data instead of database queries
-- Enhanced login UI with spinning loading indicator and reduced redirect timeout
-- Server now responds consistently in 24ms for authentication requests
-- All user types (cashiers, servers, managers) authenticate instantly
-
-### Server Infrastructure Improvements (July 2025)
-- Enhanced server index.ts with comprehensive error handling and graceful shutdown
-- Added PostgreSQL session store for better performance and session persistence
-- Implemented database connection health checks and monitoring
-- Optimized connection pool size (max: 15, min: 3) for improved concurrent access
-- Added connection timeout optimization and pool monitoring
-- Enhanced middleware with request size limits and security headers
-- Improved startup logging with system status indicators
-- Added graceful shutdown handling for SIGTERM and SIGINT signals
-
-### Login Redirection and Authentication Flow Enhancement (July 2025)
-- Implemented proper role-based login redirection (managers to /manager, staff to /)
-- Enhanced login flow with improved SPA navigation and fallback mechanisms
-- Added role-based route protection (managers blocked from operational routes)
-- Improved session persistence with explicit session saving and error handling
-- Enhanced authentication middleware with proper try-catch error handling
-- Added comprehensive error handling for login/logout operations
-- Optimized database connection pooling with application naming and monitoring
-- Login responses now consistently fast: 25ms average response time
-- Session management now properly handles concurrent users and graceful cleanup
-
-### Cross-Origin Session Management Implementation (July 2025)
-- Added CORS middleware with proper credential handling and origin validation
-- Configured production-ready session cookies with secure: true and sameSite: 'none'
-- Updated frontend API client to include credentials for cross-origin requests
-- Added environment-based base URL configuration for development vs production
-- Implemented HTTPS redirect middleware for production deployment
-- Enhanced session cookie settings with custom name 'liberty.session'
-- Added PostgreSQL session store for better performance and persistence
-- Created session test API endpoint (/api/auth/session-test) for debugging
-- Updated logout functionality to properly clear custom session cookies
-- Configured dynamic CORS origins based on environment variables
-
-### Enhanced Login Flow Implementation (July 2025)
-- **Backend Security Enhancements**: Refactored login route with comprehensive input validation and sanitization
-- **Advanced Error Handling**: Added detailed error responses with specific status codes (400, 401, 403, 500)
-- **Session Management**: Implemented secure session creation with user data, IP tracking, and activity monitoring
-- **Enhanced Authentication**: Added account status validation and proper credential verification
-- **Frontend Improvements**: Updated login form with improved loading states and error handling
-- **User Experience**: Added visual feedback during login process with proper loading indicators
-- **Response Validation**: Enhanced response data validation with complete user data verification
-- **Role-Based Routing**: Improved role-based redirection with proper dashboard assignment
-- **Security Features**: Added session destruction before new session creation and IP/user agent tracking
-- **Performance**: Maintained optimized login response times while adding security features
-
-### Production Environment Enhancements (July 2025)
-- **Environment Variable Support**: Added proper `process.env.FRONTEND_URL` and `process.env.REPLIT_DOMAIN` handling
-- **CORS Configuration**: Enhanced CORS for production with dynamic origin validation and proper filtering
-- **Authentication Middleware**: Robust session validation with data integrity checks and activity tracking
-- **User Endpoint Enhancement**: `/api/auth/user` endpoint now returns comprehensive authenticated user data
-- **Production Logging**: Added environment variable validation and session ID generation logging
-- **Security Hardening**: Enhanced session management with proper ES module imports and error handling
-- **Session Persistence**: PostgreSQL-backed session store with custom session ID generation
-- **Cross-Origin Support**: Complete cross-origin session management for production deployment
-
-### Session Management and Cookie Handling Complete (July 2025)
-- **Cookie Configuration**: Fixed session cookie settings with `secure: false` for development and `sameSite: 'lax'` for same-origin requests
-- **Session ID Generation**: Removed excessive logging to prevent session ID proliferation and ensure proper session management
-- **Cookie Path and Domain**: Ensured cookies are available for all paths with proper domain handling
-- **Frontend API Client**: Verified all API calls properly include `credentials: "include"` for cookie transmission
-- **Session Save Before Response**: Fixed critical issue where session was not saved before redirect by ensuring session.save() completes before response
-- **Backend Session Validation**: Added comprehensive session debugging and validation with PostgreSQL session store
-- **Session Persistence**: Confirmed session cookies are properly saved and transmitted between frontend and backend
-- **Authentication Flow**: Enhanced login flow with immediate client-side routing and clean welcome messages
-- **Production Ready**: Complete session management system fully operational with robust cookie handling and proper session timing
-- **System Status**: ✅ FULLY FUNCTIONAL - All authentication endpoints working correctly with proper session persistence
-
-### API Authentication Endpoints Enhancement (July 2025)
-- **GET /api/auth/redirect**: Added helper endpoint that returns role-based dashboard routing information
-- **Response Format**: Returns `{ dashboardPath, type, userRole }` for authenticated users
-- **Role-Based Routing**: Managers get `/manager` path with `management` type, cashiers/servers get `/dashboard` path with `operational` type
-- **Session Authentication**: Endpoint properly validates authenticated sessions and returns 401 for unauthenticated requests
-- **Integration Ready**: Endpoint available for frontend components to determine correct dashboard redirection based on user role
-
-### Critical Business Logic Fixes (July 2025)
-- **Stock Reduction Implementation**: Fixed automatic stock reduction during sales - stock now properly decreases when payments are processed
-- **Manager Statistics Fix**: Corrected statistics calculation by using payments table instead of session data for accurate sales reporting
-- **Real-Time Stock Tracking**: Stock levels now update immediately after each sale and are visible to cashiers during order creation
-- **Credit Client Creation Fix**: Resolved credit client creation errors with proper data validation and error handling
-- **Session Statistics Enhancement**: Sessions now store final sales totals and transaction counts when closed
-- **Database Field Mapping**: Fixed stockQuantity and minStockLevel field mappings to match actual database schema
-- **Payment-Based Analytics**: Manager dashboard now shows accurate morning/evening sales based on actual payment transactions
-- **Stock Status Indicators**: Low stock alerts now properly calculated using stockQuantity vs minStockLevel comparisons
-
-### System Validation and Testing Complete (July 2025)
-- **Database Import Fix**: Resolved missing database imports and references in manager statistics endpoints
-- **Order Creation Enhancement**: Fixed order item creation to automatically retrieve product prices from database
-- **Stock Reduction Validation**: Confirmed automatic stock reduction working correctly (tested: Meiadeleite 24→22 units after 2-unit sale)
-- **Payment Processing Integration**: Verified payment creation properly triggers stock reduction and order completion
-- **Manager Dashboard Accuracy**: Confirmed statistics display real-time sales data (morning: 15,000 F CFA, evening: 1,000 F CFA, total: 16,000 F CFA)
-- **Credit Client Management**: Validated credit client creation with proper data structure and error handling
-- **Session Management**: Confirmed session creation and payment tracking working correctly with proper sales totals
-- **Production Ready**: All core business logic functions validated and working correctly with real transactions
+- **Replit Integration**: Replit-specific plugins
+- **Error Handling**: Runtime error overlay
+- **Code Execution**: `tsx` (TypeScript execution), `esbuild` (production builds)

@@ -1607,6 +1607,210 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced manager routes for new features
+  
+  // Product search for manager
+  app.get("/api/products/search", requireAuth, requireRole(["manager"]), async (req, res) => {
+    try {
+      const allProducts = await db
+        .select({
+          id: products.id,
+          name: products.name,
+          price: products.price,
+          currentStock: products.currentStock,
+          category: sql<string>`CASE 
+            WHEN ${products.categoryId} = 1 THEN 'Bebidas'
+            WHEN ${products.categoryId} = 2 THEN 'Comidas'
+            WHEN ${products.categoryId} = 3 THEN 'Vinhos'
+            WHEN ${products.categoryId} = 4 THEN 'Cervejas'
+            ELSE 'Outros'
+          END`,
+        })
+        .from(products)
+        .orderBy(products.name);
+      
+      res.json(allProducts);
+    } catch (error) {
+      console.error("Error fetching products for search:", error);
+      res.status(500).json({ message: "Erro ao buscar produtos" });
+    }
+  });
+
+  // Bulk stock update
+  app.put("/api/manager/bulk-stock-update", requireAuth, requireRole(["manager"]), async (req, res) => {
+    try {
+      const { updates } = req.body;
+      
+      if (!updates || !Array.isArray(updates)) {
+        return res.status(400).json({ message: "Dados de atualização inválidos" });
+      }
+
+      // Process bulk updates
+      for (const update of updates) {
+        await db
+          .update(products)
+          .set({ 
+            currentStock: update.newStock,
+          })
+          .where(eq(products.id, update.productId));
+      }
+
+      res.json({ message: "Stock atualizado com sucesso", updatedCount: updates.length });
+    } catch (error) {
+      console.error("Error bulk updating stock:", error);
+      res.status(500).json({ message: "Erro ao atualizar stock em massa" });
+    }
+  });
+
+  // Enhanced payment breakdown
+  app.get("/api/manager/payment-breakdown/:date", requireAuth, requireRole(["manager"]), async (req, res) => {
+    try {
+      const { date } = req.params;
+      const startDate = new Date(date);
+      const endDate = new Date(date);
+      endDate.setDate(endDate.getDate() + 1);
+
+      const paymentBreakdown = await db
+        .select({
+          method: payments.method,
+          amount: sum(payments.amount).as('total'),
+          count: count(payments.id).as('count'),
+        })
+        .from(payments)
+        .where(and(
+          gte(payments.createdAt, startDate),
+          lt(payments.createdAt, endDate)
+        ))
+        .groupBy(payments.method);
+
+      const result = {
+        cash: { total: "0.00", count: 0 },
+        mobile: { total: "0.00", count: 0 },
+        card: { total: "0.00", count: 0 },
+        credit: { total: "0.00", count: 0 },
+        total: "0.00"
+      };
+
+      let totalAmount = 0;
+
+      paymentBreakdown.forEach(item => {
+        const amount = parseFloat(item.amount || '0');
+        totalAmount += amount;
+        
+        switch (item.method) {
+          case 'cash':
+            result.cash = { total: amount.toFixed(2), count: Number(item.count) };
+            break;
+          case 'mobile_money':
+            result.mobile = { total: amount.toFixed(2), count: Number(item.count) };
+            break;
+          case 'credit':
+            result.credit = { total: amount.toFixed(2), count: Number(item.count) };
+            break;
+          case 'partial':
+            // Partial payments count as cash for now
+            result.cash.total = (parseFloat(result.cash.total) + amount).toFixed(2);
+            result.cash.count += Number(item.count);
+            break;
+        }
+      });
+
+      result.total = totalAmount.toFixed(2);
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching payment breakdown:", error);
+      res.status(500).json({ message: "Erro ao buscar breakdown de pagamentos" });
+    }
+  });
+
+  // Credit payments/reimbursements
+  app.get("/api/manager/credit-payments/:date", requireAuth, requireRole(["manager"]), async (req, res) => {
+    try {
+      const { date } = req.params;
+      const startDate = new Date(date);
+      const endDate = new Date(date);
+      endDate.setDate(endDate.getDate() + 1);
+
+      const creditPayments = await db
+        .select({
+          id: payments.id,
+          amount: payments.amount,
+          createdAt: payments.createdAt,
+          clientId: payments.creditClientId,
+          phoneNumber: payments.phoneNumber,
+        })
+        .from(payments)
+        .where(and(
+          gte(payments.createdAt, startDate),
+          lt(payments.createdAt, endDate),
+          eq(payments.isDirectCreditPayment, true)
+        ))
+        .orderBy(desc(payments.createdAt));
+
+      res.json(creditPayments);
+    } catch (error) {
+      console.error("Error fetching credit payments:", error);
+      res.status(500).json({ message: "Erro ao buscar pagamentos de crédito" });
+    }
+  });
+
+  // Detailed sales report
+  app.get("/api/manager/detailed-sales/:date", requireAuth, requireRole(["manager"]), async (req, res) => {
+    try {
+      const { date } = req.params;
+      const startDate = new Date(date);
+      const endDate = new Date(date);
+      endDate.setDate(endDate.getDate() + 1);
+
+      // Get detailed sales data with sessions breakdown
+      const sessionsData = await db
+        .select({
+          sessionId: barSessions.id,
+          shiftType: barSessions.shiftType,
+          totalSales: barSessions.totalSales,
+          transactionCount: barSessions.transactionCount,
+          startTime: barSessions.startTime,
+          endTime: barSessions.endTime,
+          cashier: sql`${users.firstName} || ' ' || ${users.lastName}`,
+        })
+        .from(barSessions)
+        .leftJoin(users, eq(barSessions.userId, users.id))
+        .where(and(
+          gte(barSessions.startTime, startDate),
+          lt(barSessions.startTime, endDate)
+        ))
+        .orderBy(desc(barSessions.startTime));
+
+      // Get product sales breakdown
+      const topProducts = await db
+        .select({
+          productName: products.name,
+          totalQuantity: sum(orderItems.quantity).as('totalSold'),
+          totalRevenue: sum(orderItems.totalPrice).as('revenue'),
+        })
+        .from(orderItems)
+        .leftJoin(orders, eq(orderItems.orderId, orders.id))
+        .leftJoin(products, eq(orderItems.productId, products.id))
+        .where(and(
+          gte(orders.createdAt, startDate),
+          lt(orders.createdAt, endDate),
+          eq(orders.status, 'completed')
+        ))
+        .groupBy(products.id, products.name)
+        .orderBy(desc(sql`sum(${orderItems.totalPrice})`))
+        .limit(10);
+
+      res.json({
+        sessions: sessionsData,
+        topProducts: topProducts,
+        date: date,
+      });
+    } catch (error) {
+      console.error("Error fetching detailed sales report:", error);
+      res.status(500).json({ message: "Erro ao buscar relatório detalhado de vendas" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

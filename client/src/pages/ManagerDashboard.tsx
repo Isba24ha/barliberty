@@ -111,6 +111,15 @@ export default function ManagerDashboard() {
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
   const [selectedCreditClientId, setSelectedCreditClientId] = useState<number | null>(null);
   const [showSessionModal, setShowSessionModal] = useState(false);
+  
+  // New state for enhanced features
+  const [sessionHistoryPage, setSessionHistoryPage] = useState(0);
+  const [showBulkStockUpdate, setShowBulkStockUpdate] = useState(false);
+  const [selectedLowStockProducts, setSelectedLowStockProducts] = useState<number[]>([]);
+  const [productSearchTerm, setProductSearchTerm] = useState("");
+  const [showProductSearch, setShowProductSearch] = useState(false);
+
+  const SESSIONS_PER_PAGE = 15;
 
   const { data: sessionDetails } = useQuery({
     queryKey: ["/api/manager/session-details", selectedSessionId],
@@ -120,6 +129,24 @@ export default function ManagerDashboard() {
   const { data: creditClientDetails } = useQuery({
     queryKey: ["/api/manager/credit-client", selectedCreditClientId, "details"],
     enabled: !!selectedCreditClientId,
+  });
+
+  // Enhanced queries for new features
+  const { data: detailedSalesReport } = useQuery({
+    queryKey: ["/api/manager/detailed-sales", selectedDate],
+  });
+
+  const { data: paymentBreakdownData } = useQuery({
+    queryKey: ["/api/manager/payment-breakdown", selectedDate],
+  });
+
+  const { data: creditPaymentsData } = useQuery({
+    queryKey: ["/api/manager/credit-payments", selectedDate],
+  });
+
+  const { data: productsForSearch } = useQuery({
+    queryKey: ["/api/products/search"],
+    enabled: showProductSearch,
   });
 
   const queryClient = useQueryClient();
@@ -368,6 +395,60 @@ export default function ManagerDashboard() {
     setSelectedCreditClientId(clientId);
   };
 
+  // New enhanced functions for improved features
+  const handleBulkStockUpdate = () => {
+    setShowBulkStockUpdate(true);
+  };
+
+  const handleSelectLowStockProduct = (productId: number, selected: boolean) => {
+    if (selected) {
+      setSelectedLowStockProducts(prev => [...prev, productId]);
+    } else {
+      setSelectedLowStockProducts(prev => prev.filter(id => id !== productId));
+    }
+  };
+
+  const bulkUpdateStockMutation = useMutation({
+    mutationFn: async (updates: { productId: number; newStock: number }[]) => {
+      const res = await apiRequest("PUT", "/api/manager/bulk-stock-update", { updates });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/manager/low-stock"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/manager/stats/daily"] });
+      setShowBulkStockUpdate(false);
+      setSelectedLowStockProducts([]);
+      toast({
+        title: "Succès",
+        description: "Stock mis à jour avec succès",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la mise à jour du stock",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const filteredProducts = productsForSearch?.filter((product: any) => 
+    product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+    product.id.toString().includes(productSearchTerm)
+  ) || [];
+
+  // Calculate paginated session history
+  const paginatedSessionHistory = managerStats?.sessionHistory 
+    ? managerStats.sessionHistory.slice(
+        sessionHistoryPage * SESSIONS_PER_PAGE,
+        (sessionHistoryPage + 1) * SESSIONS_PER_PAGE
+      )
+    : [];
+
+  const totalSessionPages = managerStats?.sessionHistory 
+    ? Math.ceil(managerStats.sessionHistory.length / SESSIONS_PER_PAGE)
+    : 0;
+
   if (isLoading) {
     return (
       <div className="p-6">
@@ -517,19 +598,23 @@ export default function ManagerDashboard() {
               </CardContent>
             </Card>
 
-            {/* Session History */}
+            {/* Session History with Pagination */}
             <Card className="bg-gray-800 border-gray-700">
               <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <Calendar className="w-5 h-5 mr-2" />
-                  Histórico de Sessões
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-white flex items-center">
+                    <Calendar className="w-5 h-5 mr-2" />
+                    Histórico de Sessões ({managerStats?.sessionHistory?.length || 0})
+                  </CardTitle>
+                  <div className="text-sm text-gray-400">
+                    Página {sessionHistoryPage + 1} de {totalSessionPages || 1}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {console.log("Session History Debug:", managerStats?.sessionHistory)}
-                  {managerStats?.sessionHistory && managerStats.sessionHistory.length > 0 ? (
-                    managerStats.sessionHistory.map((session) => (
+                  {paginatedSessionHistory && paginatedSessionHistory.length > 0 ? (
+                    paginatedSessionHistory.map((session) => (
                       <div key={session.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
                         <div className="flex-1">
                           <p className="text-white font-medium">{session.user}</p>
@@ -562,12 +647,36 @@ export default function ManagerDashboard() {
                   ) : (
                     <div className="text-center py-8">
                       <p className="text-gray-400 mb-2">Nenhuma sessão encontrada</p>
-                      <p className="text-xs text-gray-500">
-                        Debug: {JSON.stringify(managerStats?.sessionHistory || "undefined")}
-                      </p>
                     </div>
                   )}
                 </div>
+                
+                {/* Pagination Controls */}
+                {totalSessionPages > 1 && (
+                  <div className="flex justify-center items-center space-x-2 mt-4 pt-4 border-t border-gray-600">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-gray-600"
+                      disabled={sessionHistoryPage === 0}
+                      onClick={() => setSessionHistoryPage(prev => Math.max(0, prev - 1))}
+                    >
+                      Anterior
+                    </Button>
+                    <span className="text-sm text-gray-400 px-4">
+                      {sessionHistoryPage + 1} / {totalSessionPages}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-gray-600"
+                      disabled={sessionHistoryPage >= totalSessionPages - 1}
+                      onClick={() => setSessionHistoryPage(prev => Math.min(totalSessionPages - 1, prev + 1))}
+                    >
+                      Próxima
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -617,38 +726,53 @@ export default function ManagerDashboard() {
             </Card>
           </div>
           
-          {/* Payment Breakdown Section */}
+          {/* Enhanced Payment Breakdown Section */}
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <CreditCard className="h-5 w-5" />
-                Breakdown de Pagamentos - Sessão Ativa
+                Breakdown Détaillé de Pagamentos - {selectedDate}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-green-400">💵 Dinheiro</p>
-                  <p className="text-2xl font-bold text-white">{managerStats?.paymentBreakdown?.cash || "0.00"} F CFA</p>
+                  <p className="text-2xl font-bold text-white">{paymentBreakdownData?.cash?.total || "0.00"} F CFA</p>
+                  <p className="text-xs text-gray-400">{paymentBreakdownData?.cash?.count || 0} transações</p>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-blue-400">📱 Mobile</p>
-                  <p className="text-2xl font-bold text-white">{managerStats?.paymentBreakdown?.mobile || "0.00"} F CFA</p>
+                  <p className="text-sm font-medium text-blue-400">📱 Mobile Money</p>
+                  <p className="text-2xl font-bold text-white">{paymentBreakdownData?.mobile?.total || "0.00"} F CFA</p>
+                  <p className="text-xs text-gray-400">{paymentBreakdownData?.mobile?.count || 0} transações</p>
                 </div>
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-purple-400">💳 Cartão</p>
-                  <p className="text-2xl font-bold text-white">{managerStats?.paymentBreakdown?.card || "0.00"} F CFA</p>
+                  <p className="text-2xl font-bold text-white">{paymentBreakdownData?.card?.total || "0.00"} F CFA</p>
+                  <p className="text-xs text-gray-400">{paymentBreakdownData?.card?.count || 0} transações</p>
                 </div>
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-orange-400">📝 Crédito</p>
-                  <p className="text-2xl font-bold text-white">{managerStats?.paymentBreakdown?.credit || "0.00"} F CFA</p>
+                  <p className="text-2xl font-bold text-white">{paymentBreakdownData?.credit?.total || "0.00"} F CFA</p>
+                  <p className="text-xs text-gray-400">{paymentBreakdownData?.credit?.count || 0} transações</p>
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t border-gray-600">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold text-white">Total:</span>
-                  <span className="text-2xl font-bold text-green-400">{managerStats?.paymentBreakdown?.total || "0.00"} F CFA</span>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-lg font-semibold text-white">Total Vendas:</span>
+                  <span className="text-2xl font-bold text-green-400">{paymentBreakdownData?.total || "0.00"} F CFA</span>
                 </div>
+                {creditPaymentsData && creditPaymentsData.length > 0 && (
+                  <div className="border-t border-gray-600 pt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-blue-400">Reembolsos de Crédito:</span>
+                      <span className="text-lg font-bold text-blue-400">
+                        {formatCurrency(creditPaymentsData.reduce((sum: number, payment: any) => sum + parseFloat(payment.amount), 0).toString())} F CFA
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">{creditPaymentsData.length} reembolsos processados</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -765,22 +889,50 @@ export default function ManagerDashboard() {
               </CardContent>
             </Card>
 
-            {/* Low Stock Alert */}
+            {/* Enhanced Low Stock Alert with Bulk Update */}
             <Card className="bg-gray-800 border-gray-700">
               <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <Package className="w-5 h-5 mr-2 text-red-400" />
-                  {PT.manager.lowStockProducts}
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-white flex items-center">
+                    <AlertTriangle className="w-5 h-5 mr-2 text-orange-500" />
+                    Stock Faible ({lowStockProducts?.length || 0} produits)
+                  </CardTitle>
+                  <div className="flex space-x-2">
+                    <Button
+                      onClick={() => setShowProductSearch(true)}
+                      className="bg-blue-600 hover:bg-blue-700"
+                      size="sm"
+                    >
+                      Pesquisar Produtos
+                    </Button>
+                    {selectedLowStockProducts.length > 0 && (
+                      <Button
+                        onClick={handleBulkStockUpdate}
+                        className="bg-green-600 hover:bg-green-700"
+                        size="sm"
+                      >
+                        Atualizar Stock ({selectedLowStockProducts.length})
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 max-h-64 overflow-y-auto">
                   {lowStockProducts && lowStockProducts.length > 0 ? (
                     lowStockProducts.map((product: any) => (
                       <div key={product.id} className="flex items-center justify-between p-3 bg-red-900/20 border border-red-700 rounded-lg">
-                        <div className="flex-1">
-                          <p className="text-white font-medium">{product.name}</p>
-                          <p className="text-sm text-gray-400">ID: {product.id}</p>
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedLowStockProducts.includes(product.id)}
+                            onChange={(e) => handleSelectLowStockProduct(product.id, e.target.checked)}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <div className="flex-1">
+                            <p className="text-white font-medium">{product.name}</p>
+                            <p className="text-sm text-gray-400">ID: {product.id} - {product.category}</p>
+                          </div>
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-red-400 font-medium">
@@ -1097,6 +1249,110 @@ export default function ManagerDashboard() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Product Search Modal */}
+      <Dialog open={showProductSearch} onOpenChange={setShowProductSearch}>
+        <DialogContent className="bg-gray-800 border-gray-700 text-white max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Pesquisar Produtos</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Pesquisar por nome ou ID do produto..."
+              value={productSearchTerm}
+              onChange={(e) => setProductSearchTerm(e.target.value)}
+              className="bg-gray-700 border-gray-600"
+            />
+            
+            {/* Fixed Categories List */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 p-4 bg-gray-700 rounded-lg">
+              <div className="text-center">
+                <Badge variant="outline" className="w-full">Bebidas</Badge>
+              </div>
+              <div className="text-center">
+                <Badge variant="outline" className="w-full">Comidas</Badge>
+              </div>
+              <div className="text-center">
+                <Badge variant="outline" className="w-full">Vinhos</Badge>
+              </div>
+              <div className="text-center">
+                <Badge variant="outline" className="w-full">Cervejas</Badge>
+              </div>
+            </div>
+            
+            {/* Filtered Products Results */}
+            <div className="max-h-96 overflow-y-auto space-y-2">
+              {filteredProducts.map((product: any) => (
+                <div key={product.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                  <div className="flex-1">
+                    <p className="text-white font-medium">{product.name}</p>
+                    <p className="text-sm text-gray-400">ID: {product.id} - {product.category}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-green-400">{formatCurrency(product.price)}</p>
+                    <p className="text-xs text-gray-400">Stock: {product.currentStock}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Stock Update Modal */}
+      <Dialog open={showBulkStockUpdate} onOpenChange={setShowBulkStockUpdate}>
+        <DialogContent className="bg-gray-800 border-gray-700 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Atualização em Massa de Stock</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-gray-400">
+              Produtos selecionados: {selectedLowStockProducts.length}
+            </p>
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {lowStockProducts
+                ?.filter((product: any) => selectedLowStockProducts.includes(product.id))
+                .map((product: any) => (
+                  <div key={product.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                    <div className="flex-1">
+                      <p className="text-white font-medium">{product.name}</p>
+                      <p className="text-sm text-gray-400">Stock atual: {product.currentStock}</p>
+                    </div>
+                    <div className="w-24">
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="Novo stock"
+                        className="bg-gray-600 border-gray-500 text-center"
+                      />
+                    </div>
+                  </div>
+                ))}
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowBulkStockUpdate(false)}
+                className="border-gray-600"
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={() => {
+                  // Implementation will be added when backend is ready
+                  toast({
+                    title: "Funcionalidade em desenvolvimento",
+                    description: "A atualização em massa será implementada em breve",
+                  });
+                }}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                Atualizar Stock
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
