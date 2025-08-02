@@ -317,14 +317,14 @@ export default function Orders() {
         });
       }
       
-      // Add additional quantities for existing products
+      // Handle quantity updates for existing products (including reductions)
       for (const item of updatedItems) {
         const existingItem = existingOrder.items.find(existing => existing.product.id === item.product.id);
-        if (existingItem && item.quantity > existingItem.quantity) {
-          // Add the difference in quantity
+        if (existingItem && item.quantity !== existingItem.quantity) {
+          // Send the new absolute quantity (not the difference)
           itemsToAdd.push({
             productId: item.product.id,
-            quantity: item.quantity - existingItem.quantity,
+            quantity: item.quantity, // Send absolute quantity, not difference
             price: item.product.price
           });
         }

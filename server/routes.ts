@@ -725,16 +725,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ));
         
         if (existingItems.length > 0) {
-          // Update the first existing item by increasing quantity (consolidate all into one)
+          // Update the first existing item - use the new quantity directly (not adding)
           const existingItem = existingItems[0];
-          const newQuantity = existingItem.quantity + newItem.quantity;
-          const newTotalPrice = (parseFloat(newItem.price) * newQuantity).toFixed(2);
           
-          const updatedItem = await storage.updateOrderItem(existingItem.id, {
-            quantity: newQuantity,
-            totalPrice: newTotalPrice
-          });
-          addedItems.push(updatedItem);
+          // If the new quantity is 0 or negative, remove the item
+          if (newItem.quantity <= 0) {
+            await db.delete(orderItems).where(eq(orderItems.id, existingItem.id));
+            console.log(`[DEBUG] Removed item ${existingItem.id} from order ${orderId} (quantity: ${newItem.quantity})`);
+          } else {
+            // Update with the new absolute quantity (not adding to existing)
+            const newQuantity = newItem.quantity;
+            const newTotalPrice = (parseFloat(newItem.price) * newQuantity).toFixed(2);
+            
+            const updatedItem = await storage.updateOrderItem(existingItem.id, {
+              quantity: newQuantity,
+              totalPrice: newTotalPrice
+            });
+            addedItems.push(updatedItem);
+            console.log(`[DEBUG] Updated item ${existingItem.id} to quantity ${newQuantity} (was ${existingItem.quantity})`);
+          }
           
           // Remove any duplicate items for the same product (if they exist)
           if (existingItems.length > 1) {
