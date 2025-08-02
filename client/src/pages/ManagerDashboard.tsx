@@ -244,6 +244,32 @@ export default function ManagerDashboard() {
     },
   });
 
+  // Mutation for individual stock update
+  const updateStockMutation = useMutation({
+    mutationFn: async ({ productId, newStock }: { productId: number; newStock: number }) => {
+      const response = await apiRequest('POST', '/api/manager/update-product-stock', { 
+        productId, 
+        currentStock: newStock 
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Stock atualizado",
+        description: "Stock do produto atualizado com sucesso",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/manager/low-stock'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao atualizar stock",
+        description: error.message || "Erro ao atualizar stock",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleRefresh = () => {
     refetch();
   };
@@ -399,7 +425,6 @@ export default function ManagerDashboard() {
   // New enhanced functions for improved features
   const handleBulkStockUpdate = () => {
     setShowBulkStockUpdate(true);
-    setShowProductSearch(true); // Also enable product search when opening stock update
   };
 
   const bulkUpdateStockMutation = useMutation({
@@ -426,7 +451,15 @@ export default function ManagerDashboard() {
     },
   });
 
-  const filteredProducts = productsForSearch?.filter((product: any) => 
+  // Get all products for stock update modal
+  const { data: allProducts } = useQuery({
+    queryKey: ["/api/products"],
+    enabled: showBulkStockUpdate,
+  });
+
+  // Filter products based on search term
+  const filteredProducts = allProducts?.filter((product: any) => 
+    productSearchTerm === "" || 
     product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
     product.id.toString().includes(productSearchTerm)
   ) || [];
@@ -801,6 +834,7 @@ export default function ManagerDashboard() {
             </CardContent>
           </Card>
 
+          {/* Move the detailed breakdown to Sales tab */}
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
               <CardTitle className="text-white flex items-center">
@@ -809,7 +843,7 @@ export default function ManagerDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="bg-gray-700 p-4 rounded-lg">
                   <h4 className="text-sm font-medium text-gray-400">Vendas Semanais</h4>
                   <p className="text-2xl font-bold text-white">{formatCurrency(managerStats?.weeklySales || "0")}</p>
@@ -822,6 +856,81 @@ export default function ManagerDashboard() {
                   <h4 className="text-sm font-medium text-gray-400">Média Diária</h4>
                   <p className="text-2xl font-bold text-white">{formatCurrency(managerStats?.dailySales.total || "0")}</p>
                 </div>
+              </div>
+
+              {/* Detailed Payment Breakdown in Sales Tab */}
+              <div className="border-t border-gray-600 pt-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Breakdown Detalhado de Pagamentos</h3>
+                
+                {/* Daily Breakdown */}
+                <div className="mb-6">
+                  <h4 className="text-md font-semibold text-gray-300 mb-3">Dia: {selectedDate}</h4>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="bg-gray-700 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-green-400">💵 Dinheiro</p>
+                      <p className="text-xl font-bold text-white">{paymentBreakdownData?.cash?.total || "0.00"} F CFA</p>
+                      <p className="text-xs text-gray-400">{paymentBreakdownData?.cash?.count || 0} transações</p>
+                    </div>
+                    <div className="bg-gray-700 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-blue-400">📱 Mobile Money</p>
+                      <p className="text-xl font-bold text-white">{paymentBreakdownData?.mobile?.total || "0.00"} F CFA</p>
+                      <p className="text-xs text-gray-400">{paymentBreakdownData?.mobile?.count || 0} transações</p>
+                    </div>
+                    <div className="bg-gray-700 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-purple-400">💳 Cartão</p>
+                      <p className="text-xl font-bold text-white">{paymentBreakdownData?.card?.total || "0.00"} F CFA</p>
+                      <p className="text-xs text-gray-400">{paymentBreakdownData?.card?.count || 0} transações</p>
+                    </div>
+                    <div className="bg-gray-700 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-orange-400">📝 Crédito</p>
+                      <p className="text-xl font-bold text-white">{paymentBreakdownData?.credit?.total || "0.00"} F CFA</p>
+                      <p className="text-xs text-gray-400">{paymentBreakdownData?.credit?.count || 0} transações</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-gray-600">
+                    <div className="flex justify-between items-center">
+                      <span className="text-md font-semibold text-white">Total Diário:</span>
+                      <span className="text-xl font-bold text-green-400">{paymentBreakdownData?.total || "0.00"} F CFA</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Weekly Summary */}
+                <div className="border-t border-gray-600 pt-4">
+                  <h4 className="text-md font-semibold text-gray-300 mb-3">Resumo Semanal</h4>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="bg-gray-700 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-gray-400">Total da Semana</p>
+                      <p className="text-lg font-bold text-green-400">{formatCurrency(managerStats?.weeklySales || "0")}</p>
+                    </div>
+                    <div className="bg-gray-700 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-gray-400">Média Diária</p>
+                      <p className="text-lg font-bold text-blue-400">
+                        {formatCurrency((parseFloat(managerStats?.weeklySales || "0") / 7).toFixed(2))}
+                      </p>
+                    </div>
+                    <div className="bg-gray-700 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-gray-400">Crescimento</p>
+                      <p className="text-lg font-bold text-yellow-400">
+                        {managerStats?.weeklySales && managerStats?.dailySales?.total ? 
+                          ((parseFloat(managerStats.dailySales.total) / (parseFloat(managerStats.weeklySales) / 7) - 1) * 100).toFixed(1) : "0.0"}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Credit Reimbursements */}
+                {creditPaymentsData && creditPaymentsData.length > 0 && (
+                  <div className="border-t border-gray-600 pt-4 mt-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-blue-400">Reembolsos de Crédito do Dia:</span>
+                      <span className="text-lg font-bold text-blue-400">
+                        {formatCurrency(creditPaymentsData.reduce((sum: number, payment: any) => sum + parseFloat(payment.amount), 0).toString())}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">{creditPaymentsData.length} reembolsos processados</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -921,24 +1030,14 @@ export default function ManagerDashboard() {
                     <Package className="w-5 h-5 mr-2 text-orange-500" />
                     Gestão de Stock
                   </CardTitle>
-                  <div className="flex space-x-2">
-                    <Button
-                      onClick={() => setShowProductSearch(true)}
-                      className="bg-blue-600 hover:bg-blue-700"
-                      size="sm"
-                    >
-                      <Search className="w-4 h-4 mr-1" />
-                      Pesquisar Produtos
-                    </Button>
-                    <Button
-                      onClick={handleBulkStockUpdate}
-                      className="bg-green-600 hover:bg-green-700"
-                      size="sm"
-                    >
-                      <Package className="w-4 h-4 mr-1" />
-                      Atualizar Stock
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={handleBulkStockUpdate}
+                    className="bg-green-600 hover:bg-green-700"
+                    size="sm"
+                  >
+                    <Package className="w-4 h-4 mr-1" />
+                    Atualizar Stock
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -1384,7 +1483,7 @@ export default function ManagerDashboard() {
                           const newStock = inputElement?.value;
                           if (newStock && parseInt(newStock) >= 0) {
                             // Call update API for individual product
-                            bulkUpdateStockMutation.mutate([{ productId: product.id, newStock: parseInt(newStock) }]);
+                            updateStockMutation.mutate({ productId: product.id, newStock: parseInt(newStock) });
                             inputElement.value = '';
                           } else {
                             toast({
@@ -1395,9 +1494,9 @@ export default function ManagerDashboard() {
                           }
                         }}
                         className="bg-green-600 hover:bg-green-700"
-                        disabled={bulkUpdateStockMutation.isPending}
+                        disabled={updateStockMutation.isPending}
                       >
-                        {bulkUpdateStockMutation.isPending ? "..." : "Atualizar"}
+                        {updateStockMutation.isPending ? "..." : "Atualizar"}
                       </Button>
                     </div>
                   </div>

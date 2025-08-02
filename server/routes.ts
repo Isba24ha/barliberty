@@ -1420,6 +1420,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update individual product stock route
+  app.post("/api/manager/update-product-stock", requireAuth, requireRole(["manager"]), async (req, res) => {
+    try {
+      const { productId, currentStock } = req.body;
+      
+      if (!productId || currentStock === undefined || currentStock === null) {
+        return res.status(400).json({ message: "Product ID e stock são obrigatórios" });
+      }
+
+      if (typeof currentStock !== 'number' || currentStock < 0) {
+        return res.status(400).json({ message: "Stock deve ser um número não negativo" });
+      }
+
+      // Get the product first to verify it exists
+      const product = await storage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ message: "Produto não encontrado" });
+      }
+
+      // Update the product stock
+      await storage.updateProduct(productId, { stockQuantity: currentStock });
+
+      console.log(`[DEBUG] Stock updated for product ${productId}: ${product.stockQuantity} -> ${currentStock}`);
+
+      res.json({ 
+        message: "Stock atualizado com sucesso",
+        productId,
+        previousStock: product.stockQuantity,
+        newStock: currentStock
+      });
+    } catch (error) {
+      console.error("Error updating product stock:", error);
+      res.status(500).json({ message: "Erro ao atualizar stock do produto" });
+    }
+  });
+
   // Credit client details route
   app.get("/api/manager/credit-client/:id/details", requireAuth, requireRole(["manager"]), async (req, res) => {
     try {
