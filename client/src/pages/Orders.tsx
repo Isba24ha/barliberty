@@ -36,7 +36,8 @@ import {
   UserPlus,
   Table as TableIcon,
   Search,
-  X
+  X,
+  Crown
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -47,9 +48,10 @@ import type { Table, Product, Order, OrderItem, CreditClient, Category, OrderWit
 interface OrderStep {
   step: 'table' | 'client' | 'products' | 'complete';
   selectedTable: Table | null;
-  clientType: 'anonymous' | 'credit' | null;
+  clientType: 'anonymous' | 'credit' | 'manager' | null;
   selectedClient: CreditClient | null;
   anonymousName: string;
+  managerName: string;
   orderItems: Array<{
     product: Product;
     quantity: number;
@@ -66,6 +68,7 @@ export default function Orders() {
     clientType: null,
     selectedClient: null,
     anonymousName: '',
+    managerName: '',
     orderItems: [],
     notes: ''
   });
@@ -176,6 +179,7 @@ export default function Orders() {
       clientType: null,
       selectedClient: null,
       anonymousName: '',
+      managerName: '',
       orderItems: [],
       notes: ''
     });
@@ -192,9 +196,11 @@ export default function Orders() {
       setOrderStep(prev => ({
         ...prev,
         selectedTable: table,
-        clientType: existingOrder.creditClientId ? 'credit' : 'anonymous',
+        clientType: existingOrder.creditClientId ? 'credit' : 
+                  existingOrder.clientName && (existingOrder.clientName.toLowerCase() === 'carl malack' || existingOrder.clientName.toLowerCase() === 'lucelle reis') ? 'manager' : 'anonymous',
         selectedClient: existingOrder.creditClientId ? creditClientsList.find(c => c.id === existingOrder.creditClientId) || null : null,
-        anonymousName: existingOrder.clientName || '',
+        anonymousName: existingOrder.clientName && existingOrder.clientName.toLowerCase() !== 'carl malack' && existingOrder.clientName.toLowerCase() !== 'lucelle reis' ? existingOrder.clientName : '',
+        managerName: existingOrder.clientName && (existingOrder.clientName.toLowerCase() === 'carl malack' || existingOrder.clientName.toLowerCase() === 'lucelle reis') ? existingOrder.clientName : '',
         orderItems: existingOrder.items.map(item => ({
           product: item.product,
           quantity: item.quantity
@@ -218,12 +224,13 @@ export default function Orders() {
     }));
   };
 
-  const handleClientSelection = (type: 'anonymous' | 'credit', client?: CreditClient, name?: string) => {
+  const handleClientSelection = (type: 'anonymous' | 'credit' | 'manager', client?: CreditClient, name?: string, managerName?: string) => {
     setOrderStep(prev => ({
       ...prev,
       clientType: type,
       selectedClient: client || null,
       anonymousName: name || '',
+      managerName: managerName || '',
       step: 'products'
     }));
   };
@@ -347,7 +354,8 @@ export default function Orders() {
       const orderData = {
         tableId: orderStep.selectedTable.id,
         creditClientId: orderStep.clientType === 'credit' ? orderStep.selectedClient?.id : null,
-        clientName: orderStep.clientType === 'anonymous' ? orderStep.anonymousName : null,
+        clientName: orderStep.clientType === 'anonymous' ? orderStep.anonymousName : 
+                   orderStep.clientType === 'manager' ? orderStep.managerName : null,
         totalAmount: calculateTotal(),
         notes: orderStep.notes,
         items: orderStep.orderItems.map(item => ({
@@ -598,7 +606,7 @@ export default function Orders() {
                     )}
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Anonymous Client */}
                     <Card className="bg-gray-700 border-gray-600">
                       <CardHeader>
@@ -620,6 +628,38 @@ export default function Orders() {
                         >
                           Continuar como Anônimo
                         </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Manager Client */}
+                    <Card className="bg-gray-700 border-gray-600">
+                      <CardHeader>
+                        <CardTitle className="text-white flex items-center">
+                          <Crown className="w-5 h-5 mr-2" />
+                          Gerente
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <Select 
+                          onValueChange={(value) => {
+                            handleClientSelection('manager', undefined, '', value);
+                          }}
+                        >
+                          <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                            <SelectValue placeholder="Selecionar gerente" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-gray-800 border-gray-600">
+                            <SelectItem value="Carl Malack" className="text-white">
+                              Carl Malack
+                            </SelectItem>
+                            <SelectItem value="Lucelle Reis" className="text-white">
+                              Lucelle Reis
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="text-xs text-purple-300 bg-purple-500/20 p-2 rounded border border-purple-500">
+                          Consumo gratuito disponível para gerentes
+                        </div>
                       </CardContent>
                     </Card>
 
@@ -677,7 +717,9 @@ export default function Orders() {
                       Adicionar Produtos - Mesa {orderStep.selectedTable?.number}
                     </h3>
                     <div className="text-sm text-gray-400">
-                      Cliente: {orderStep.clientType === 'credit' ? orderStep.selectedClient?.name : (orderStep.anonymousName || 'Anônimo')}
+                      Cliente: {orderStep.clientType === 'credit' ? orderStep.selectedClient?.name : 
+                               orderStep.clientType === 'manager' ? orderStep.managerName :
+                               (orderStep.anonymousName || 'Anônimo')}
                     </div>
                   </div>
 

@@ -25,8 +25,17 @@ export function PaymentModal() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Check if current user is one of the managers allowed for free consumption
-  const isManagerForFreeConsumption = user?.id === "carlmalack" || user?.id === "lucelle";
+  // Managers allowed for free consumption (any cashier can process for them)
+  const allowedManagersForFreeConsumption = ["carlmalack", "lucelle"];
+  
+  // Check if order is for one of the managers allowed for free consumption
+  const isOrderForManagerConsumption = selectedOrder && (
+    allowedManagersForFreeConsumption.includes(selectedOrder.clientName?.toLowerCase() || "") ||
+    allowedManagersForFreeConsumption.some(manager => 
+      selectedOrder.clientName?.toLowerCase().includes(manager) ||
+      selectedOrder.creditClient?.name?.toLowerCase().includes(manager)
+    )
+  );
 
   // Fetch credit clients
   const { data: creditClients = [] } = useQuery<CreditClient[]>({
@@ -129,10 +138,10 @@ export function PaymentModal() {
       return;
     }
 
-    if (paymentMethod === "manager_consumption" && !isManagerForFreeConsumption) {
+    if (paymentMethod === "manager_consumption" && !isOrderForManagerConsumption) {
       toast({
         title: "Erro",
-        description: "Apenas os gerentes Carl Malack e Lucelle Reis podem usar consumo gratuito",
+        description: "Consumo gratuito disponível apenas para os gerentes Carl Malack e Lucelle Reis",
         variant: "destructive",
       });
       return;
@@ -203,7 +212,7 @@ export function PaymentModal() {
           </Card>
 
           {/* Payment Method Selection */}
-          <div className={`grid gap-3 ${isManagerForFreeConsumption ? 'grid-cols-2' : 'grid-cols-3'}`}>
+          <div className={`grid gap-3 ${isOrderForManagerConsumption ? 'grid-cols-2' : 'grid-cols-3'}`}>
             <Button
               onClick={() => setPaymentMethod("cash")}
               variant={paymentMethod === "cash" ? "default" : "outline"}
@@ -228,7 +237,7 @@ export function PaymentModal() {
               <Smartphone className="w-6 h-6 mb-1" />
               <span className="text-sm">Mobile Money</span>
             </Button>
-            {!isManagerForFreeConsumption && (
+            {!isOrderForManagerConsumption && (
               <Button
                 onClick={() => setPaymentMethod("credit")}
                 variant={paymentMethod === "credit" ? "default" : "outline"}
@@ -242,7 +251,7 @@ export function PaymentModal() {
                 <span className="text-sm">Crédito</span>
               </Button>
             )}
-            {isManagerForFreeConsumption && (
+            {isOrderForManagerConsumption && (
               <Button
                 onClick={() => setPaymentMethod("manager_consumption")}
                 variant={paymentMethod === "manager_consumption" ? "default" : "outline"}
@@ -258,8 +267,8 @@ export function PaymentModal() {
             )}
           </div>
           
-          {/* Show Credit option for managers if they want to pay for someone else */}
-          {isManagerForFreeConsumption && (
+          {/* Show Credit option for manager orders if they want to pay for someone else */}
+          {isOrderForManagerConsumption && (
             <div className="grid grid-cols-1 gap-3">
               <Button
                 onClick={() => setPaymentMethod("credit")}
@@ -351,7 +360,7 @@ export function PaymentModal() {
                   <h3 className="font-medium text-purple-400">Consumo de Gerência</h3>
                 </div>
                 <p className="text-sm text-gray-300">
-                  Este consumo será registrado como gratuito para o gerente {user?.firstName || user?.id}.
+                  Este consumo será registrado como gratuito para o gerente {selectedOrder.clientName || selectedOrder.creditClient?.name}.
                 </p>
                 <p className="text-xs text-gray-400 mt-2">
                   Total: {formatCurrency(selectedOrder.totalAmount)} - <span className="text-green-400 font-medium">GRATUITO</span>

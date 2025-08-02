@@ -127,7 +127,7 @@ export const orders = pgTable("orders", {
   serverId: varchar("server_id").references(() => users.id),
   sessionId: integer("session_id").references(() => barSessions.id),
   creditClientId: integer("credit_client_id").references(() => creditClients.id),
-  clientName: varchar("client_name", { length: 100 }),
+  clientName: varchar("client_name", { length: 100 }), // For manager consumption tracking
   paymentMethod: paymentMethodEnum("payment_method"),
   status: orderStatusEnum("status").notNull().default("pending"),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull().default("0.00"),
