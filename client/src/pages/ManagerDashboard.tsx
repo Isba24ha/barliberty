@@ -27,7 +27,8 @@ import {
   Trash2,
   Activity,
   AlertTriangle,
-  CreditCard
+  CreditCard,
+  Search
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
@@ -398,14 +399,7 @@ export default function ManagerDashboard() {
   // New enhanced functions for improved features
   const handleBulkStockUpdate = () => {
     setShowBulkStockUpdate(true);
-  };
-
-  const handleSelectLowStockProduct = (productId: number, selected: boolean) => {
-    if (selected) {
-      setSelectedLowStockProducts(prev => [...prev, productId]);
-    } else {
-      setSelectedLowStockProducts(prev => prev.filter(id => id !== productId));
-    }
+    setShowProductSearch(true); // Also enable product search when opening stock update
   };
 
   const bulkUpdateStockMutation = useMutation({
@@ -726,54 +720,84 @@ export default function ManagerDashboard() {
             </Card>
           </div>
           
-          {/* Enhanced Payment Breakdown Section */}
+          {/* Enhanced Payment Breakdown Section - Daily & Weekly */}
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <CreditCard className="h-5 w-5" />
-                Breakdown Détaillé de Pagamentos - {selectedDate}
+                Breakdown Détaillé de Pagamentos
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-green-400">💵 Dinheiro</p>
-                  <p className="text-2xl font-bold text-white">{paymentBreakdownData?.cash?.total || "0.00"} F CFA</p>
-                  <p className="text-xs text-gray-400">{paymentBreakdownData?.cash?.count || 0} transações</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-blue-400">📱 Mobile Money</p>
-                  <p className="text-2xl font-bold text-white">{paymentBreakdownData?.mobile?.total || "0.00"} F CFA</p>
-                  <p className="text-xs text-gray-400">{paymentBreakdownData?.mobile?.count || 0} transações</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-purple-400">💳 Cartão</p>
-                  <p className="text-2xl font-bold text-white">{paymentBreakdownData?.card?.total || "0.00"} F CFA</p>
-                  <p className="text-xs text-gray-400">{paymentBreakdownData?.card?.count || 0} transações</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-orange-400">📝 Crédito</p>
-                  <p className="text-2xl font-bold text-white">{paymentBreakdownData?.credit?.total || "0.00"} F CFA</p>
-                  <p className="text-xs text-gray-400">{paymentBreakdownData?.credit?.count || 0} transações</p>
-                </div>
-              </div>
-              <div className="mt-4 pt-4 border-t border-gray-600">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-lg font-semibold text-white">Total Vendas:</span>
-                  <span className="text-2xl font-bold text-green-400">{paymentBreakdownData?.total || "0.00"} F CFA</span>
-                </div>
-                {creditPaymentsData && creditPaymentsData.length > 0 && (
-                  <div className="border-t border-gray-600 pt-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-blue-400">Reembolsos de Crédito:</span>
-                      <span className="text-lg font-bold text-blue-400">
-                        {formatCurrency(creditPaymentsData.reduce((sum: number, payment: any) => sum + parseFloat(payment.amount), 0).toString())} F CFA
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">{creditPaymentsData.length} reembolsos processados</p>
+              {/* Daily Breakdown */}
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold text-white mb-3">Dia: {selectedDate}</h4>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-green-400">💵 Dinheiro</p>
+                    <p className="text-2xl font-bold text-white">{paymentBreakdownData?.cash?.total || "0.00"} F CFA</p>
+                    <p className="text-xs text-gray-400">{paymentBreakdownData?.cash?.count || 0} transações</p>
                   </div>
-                )}
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-blue-400">📱 Mobile Money</p>
+                    <p className="text-2xl font-bold text-white">{paymentBreakdownData?.mobile?.total || "0.00"} F CFA</p>
+                    <p className="text-xs text-gray-400">{paymentBreakdownData?.mobile?.count || 0} transações</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-purple-400">💳 Cartão</p>
+                    <p className="text-2xl font-bold text-white">{paymentBreakdownData?.card?.total || "0.00"} F CFA</p>
+                    <p className="text-xs text-gray-400">{paymentBreakdownData?.card?.count || 0} transações</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-orange-400">📝 Crédito</p>
+                    <p className="text-2xl font-bold text-white">{paymentBreakdownData?.credit?.total || "0.00"} F CFA</p>
+                    <p className="text-xs text-gray-400">{paymentBreakdownData?.credit?.count || 0} transações</p>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-gray-600">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-lg font-semibold text-white">Total Diário:</span>
+                    <span className="text-2xl font-bold text-green-400">{paymentBreakdownData?.total || "0.00"} F CFA</span>
+                  </div>
+                </div>
               </div>
+
+              {/* Weekly Breakdown */}
+              <div className="border-t border-gray-600 pt-6">
+                <h4 className="text-lg font-semibold text-white mb-3">Resumo Semanal</h4>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-400">Total da Semana</p>
+                    <p className="text-xl font-bold text-green-400">{formatCurrency(managerStats?.weeklySales || "0")}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-400">Média Diária</p>
+                    <p className="text-xl font-bold text-blue-400">
+                      {formatCurrency((parseFloat(managerStats?.weeklySales || "0") / 7).toFixed(2))}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-400">Crescimento</p>
+                    <p className="text-xl font-bold text-yellow-400">
+                      {managerStats?.weeklySales && managerStats?.dailySales?.total ? 
+                        ((parseFloat(managerStats.dailySales.total) / (parseFloat(managerStats.weeklySales) / 7) - 1) * 100).toFixed(1) : "0.0"}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Credit Reimbursements */}
+              {creditPaymentsData && creditPaymentsData.length > 0 && (
+                <div className="border-t border-gray-600 pt-4 mt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-blue-400">Reembolsos de Crédito do Dia:</span>
+                    <span className="text-lg font-bold text-blue-400">
+                      {formatCurrency(creditPaymentsData.reduce((sum: number, payment: any) => sum + parseFloat(payment.amount), 0).toString())}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">{creditPaymentsData.length} reembolsos processados</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -889,13 +913,13 @@ export default function ManagerDashboard() {
               </CardContent>
             </Card>
 
-            {/* Enhanced Low Stock Alert with Bulk Update */}
+            {/* Simplified Stock Management */}
             <Card className="bg-gray-800 border-gray-700">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-white flex items-center">
-                    <AlertTriangle className="w-5 h-5 mr-2 text-orange-500" />
-                    Stock Faible ({lowStockProducts?.length || 0} produits)
+                    <Package className="w-5 h-5 mr-2 text-orange-500" />
+                    Gestão de Stock
                   </CardTitle>
                   <div className="flex space-x-2">
                     <Button
@@ -903,57 +927,68 @@ export default function ManagerDashboard() {
                       className="bg-blue-600 hover:bg-blue-700"
                       size="sm"
                     >
+                      <Search className="w-4 h-4 mr-1" />
                       Pesquisar Produtos
                     </Button>
-                    {selectedLowStockProducts.length > 0 && (
-                      <Button
-                        onClick={handleBulkStockUpdate}
-                        className="bg-green-600 hover:bg-green-700"
-                        size="sm"
-                      >
-                        Atualizar Stock ({selectedLowStockProducts.length})
-                      </Button>
-                    )}
+                    <Button
+                      onClick={handleBulkStockUpdate}
+                      className="bg-green-600 hover:bg-green-700"
+                      size="sm"
+                    >
+                      <Package className="w-4 h-4 mr-1" />
+                      Atualizar Stock
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {lowStockProducts && lowStockProducts.length > 0 ? (
-                    lowStockProducts.map((product: any) => (
-                      <div key={product.id} className="flex items-center justify-between p-3 bg-red-900/20 border border-red-700 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedLowStockProducts.includes(product.id)}
-                            onChange={(e) => handleSelectLowStockProduct(product.id, e.target.checked)}
-                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                          />
+                {/* Stock Alerts Section */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-orange-400 mb-2">
+                    Alertas de Stock ({lowStockProducts?.length || 0} produtos)
+                  </h4>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {lowStockProducts && lowStockProducts.length > 0 ? (
+                      lowStockProducts.map((product: any) => (
+                        <div key={product.id} className="flex items-center justify-between p-2 bg-red-900/20 border border-red-700 rounded">
                           <div className="flex-1">
-                            <p className="text-white font-medium">{product.name}</p>
-                            <p className="text-sm text-gray-400">ID: {product.id} - {product.category}</p>
+                            <p className="text-white text-sm font-medium">{product.name}</p>
+                            <p className="text-xs text-gray-400">ID: {product.id}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-red-400 font-medium">
+                              {product.currentStock}/{product.minStock}
+                            </p>
+                            <Badge variant="destructive" className="text-xs">
+                              {product.status === 'out_of_stock' ? 'Esgotado' : 'Baixo'}
+                            </Badge>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm text-red-400 font-medium">
-                            Stock: {product.currentStock}/{product.minStock}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {formatCurrency(product.price)}
-                          </p>
-                        </div>
-                        <div className="ml-4">
-                          <Badge variant="destructive" className="text-xs">
-                            {product.status === 'out_of_stock' ? 'Esgotado' : 'Baixo Stock'}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-400 text-center py-8">
-                      Nenhum produto com stock baixo
+                      ))
+                    ) : (
+                      <p className="text-gray-400 text-center py-4 text-sm">
+                        ✓ Todos os produtos com stock adequado
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quick Stock Statistics */}
+                <div className="grid grid-cols-3 gap-3 pt-3 border-t border-gray-600">
+                  <div className="text-center">
+                    <p className="text-xl font-bold text-blue-400">{managerStats?.totalProducts || 0}</p>
+                    <p className="text-xs text-gray-400">Total Produtos</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xl font-bold text-red-400">{lowStockProducts?.length || 0}</p>
+                    <p className="text-xs text-gray-400">Stock Baixo</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xl font-bold text-green-400">
+                      {((managerStats?.totalProducts || 0) - (lowStockProducts?.length || 0))}
                     </p>
-                  )}
+                    <p className="text-xs text-gray-400">Stock OK</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1301,55 +1336,103 @@ export default function ManagerDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Bulk Stock Update Modal */}
+      {/* Stock Update Modal */}
       <Dialog open={showBulkStockUpdate} onOpenChange={setShowBulkStockUpdate}>
-        <DialogContent className="bg-gray-800 border-gray-700 text-white max-w-2xl">
+        <DialogContent className="bg-gray-800 border-gray-700 text-white max-w-4xl max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle>Atualização em Massa de Stock</DialogTitle>
+            <DialogTitle>Atualização de Stock</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-gray-400">
-              Produtos selecionados: {selectedLowStockProducts.length}
-            </p>
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {lowStockProducts
-                ?.filter((product: any) => selectedLowStockProducts.includes(product.id))
-                .map((product: any) => (
+            {/* Search products */}
+            <div className="border-b border-gray-600 pb-4">
+              <Input
+                placeholder="Pesquisar produtos por nome ou ID..."
+                value={productSearchTerm}
+                onChange={(e) => setProductSearchTerm(e.target.value)}
+                className="bg-gray-700 border-gray-600"
+              />
+            </div>
+            
+            {/* Products list with stock update */}
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {filteredProducts.length > 0 ? (
+                filteredProducts.map((product: any) => (
                   <div key={product.id} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
                     <div className="flex-1">
                       <p className="text-white font-medium">{product.name}</p>
-                      <p className="text-sm text-gray-400">Stock atual: {product.currentStock}</p>
+                      <p className="text-sm text-gray-400">ID: {product.id} - {product.category}</p>
+                      <p className="text-xs text-gray-500">Preço: {formatCurrency(product.price)}</p>
                     </div>
-                    <div className="w-24">
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="Novo stock"
-                        className="bg-gray-600 border-gray-500 text-center"
-                      />
+                    <div className="flex items-center space-x-3">
+                      <div className="text-right">
+                        <p className="text-sm text-gray-300">Stock atual:</p>
+                        <p className="text-lg font-bold text-white">{product.currentStock}</p>
+                      </div>
+                      <div className="w-24">
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="Novo"
+                          className="bg-gray-600 border-gray-500 text-center"
+                          id={`stock-${product.id}`}
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          const inputElement = document.getElementById(`stock-${product.id}`) as HTMLInputElement;
+                          const newStock = inputElement?.value;
+                          if (newStock && parseInt(newStock) >= 0) {
+                            // Call update API for individual product
+                            bulkUpdateStockMutation.mutate([{ productId: product.id, newStock: parseInt(newStock) }]);
+                            inputElement.value = '';
+                          } else {
+                            toast({
+                              title: "Erro",
+                              description: "Por favor, insira um valor válido para o stock",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        className="bg-green-600 hover:bg-green-700"
+                        disabled={bulkUpdateStockMutation.isPending}
+                      >
+                        {bulkUpdateStockMutation.isPending ? "..." : "Atualizar"}
+                      </Button>
                     </div>
                   </div>
-                ))}
+                ))
+              ) : (
+                <p className="text-gray-400 text-center py-8">
+                  {productSearchTerm ? "Nenhum produto encontrado" : "Digite para pesquisar produtos"}
+                </p>
+              )}
             </div>
-            <div className="flex justify-end space-x-2">
+            
+            {/* Alert products section */}
+            {lowStockProducts && lowStockProducts.length > 0 && (
+              <div className="border-t border-gray-600 pt-4">
+                <h4 className="text-sm font-medium text-orange-400 mb-2">
+                  Produtos com Stock Baixo
+                </h4>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {lowStockProducts.map((product: any) => (
+                    <div key={product.id} className="flex items-center justify-between p-2 bg-red-900/20 border border-red-700 rounded text-sm">
+                      <span className="text-white">{product.name}</span>
+                      <span className="text-red-400 font-medium">{product.currentStock}/{product.minStock}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <div className="flex justify-end space-x-2 pt-4 border-t border-gray-600">
               <Button 
                 variant="outline" 
                 onClick={() => setShowBulkStockUpdate(false)}
                 className="border-gray-600"
               >
-                Cancelar
-              </Button>
-              <Button 
-                onClick={() => {
-                  // Implementation will be added when backend is ready
-                  toast({
-                    title: "Funcionalidade em desenvolvimento",
-                    description: "A atualização em massa será implementada em breve",
-                  });
-                }}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                Atualizar Stock
+                Fechar
               </Button>
             </div>
           </div>
