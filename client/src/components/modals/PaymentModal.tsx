@@ -8,20 +8,25 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CreditCard, Banknote, FileText, X, Smartphone, Users } from "lucide-react";
+import { CreditCard, Banknote, FileText, X, Smartphone, Users, Crown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/currency";
 import { thermalPrinter } from "@/lib/thermalPrinter";
+import { useAuth } from "@/hooks/useAuth";
 import type { CreditClient } from "@shared/schema";
 
 export function PaymentModal() {
   const { selectedOrder, showPaymentModal, setShowPaymentModal, setSelectedOrder } = useBarStore();
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "mobile_money" | "credit">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "mobile_money" | "credit" | "manager_consumption">("cash");
   const [receivedAmount, setReceivedAmount] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [selectedCreditClient, setSelectedCreditClient] = useState<number | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Check if current user is one of the managers allowed for free consumption
+  const isManagerForFreeConsumption = user?.id === "carlmalack" || user?.id === "lucelle";
 
   // Fetch credit clients
   const { data: creditClients = [] } = useQuery<CreditClient[]>({
@@ -62,7 +67,8 @@ export function PaymentModal() {
             subtotal: `${parseFloat(selectedOrder.totalAmount).toFixed(0)}`,
             total: `${parseFloat(selectedOrder.totalAmount).toFixed(0)}`,
             paymentMethod: paymentMethod === "cash" ? "Dinheiro" : 
-                          paymentMethod === "mobile_money" ? "Mobile Money" : "Crédito",
+                          paymentMethod === "mobile_money" ? "Mobile Money" : 
+                          paymentMethod === "credit" ? "Crédito" : "Consumo Gerência",
             receivedAmount: receivedAmount ? `${parseFloat(receivedAmount).toFixed(0)}` : undefined,
             change: receivedAmount ? `${(parseFloat(receivedAmount) - parseFloat(selectedOrder.totalAmount)).toFixed(0)}` : undefined,
             cashier: userData?.firstName || 'Caixa',
@@ -123,6 +129,15 @@ export function PaymentModal() {
       return;
     }
 
+    if (paymentMethod === "manager_consumption" && !isManagerForFreeConsumption) {
+      toast({
+        title: "Erro",
+        description: "Apenas os gerentes Carl Malack e Lucelle Reis podem usar consumo gratuito",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (paymentMethod === "mobile_money" && !phoneNumber) {
       toast({
         title: "Erro",
@@ -144,8 +159,9 @@ export function PaymentModal() {
     const paymentData = {
       orderId: selectedOrder.id,
       method: paymentMethod,
-      amount: selectedOrder.totalAmount,
-      receivedAmount: paymentMethod === "cash" ? parseFloat(receivedAmount) : null,
+      amount: paymentMethod === "manager_consumption" ? "0.00" : selectedOrder.totalAmount,
+      receivedAmount: paymentMethod === "cash" ? parseFloat(receivedAmount) : 
+                    paymentMethod === "manager_consumption" ? "0.00" : null,
       creditClientId: paymentMethod === "credit" ? selectedCreditClient : null,
       phoneNumber: paymentMethod === "mobile_money" ? phoneNumber : null,
     };
@@ -187,7 +203,7 @@ export function PaymentModal() {
           </Card>
 
           {/* Payment Method Selection */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className={`grid gap-3 ${isManagerForFreeConsumption ? 'grid-cols-2' : 'grid-cols-3'}`}>
             <Button
               onClick={() => setPaymentMethod("cash")}
               variant={paymentMethod === "cash" ? "default" : "outline"}
@@ -212,19 +228,53 @@ export function PaymentModal() {
               <Smartphone className="w-6 h-6 mb-1" />
               <span className="text-sm">Mobile Money</span>
             </Button>
-            <Button
-              onClick={() => setPaymentMethod("credit")}
-              variant={paymentMethod === "credit" ? "default" : "outline"}
-              className={`py-6 flex-col ${
-                paymentMethod === "credit"
-                  ? "bg-orange-600 hover:bg-orange-700"
-                  : "border-gray-600 hover:bg-gray-700"
-              }`}
-            >
-              <Users className="w-6 h-6 mb-1" />
-              <span className="text-sm">Crédito</span>
-            </Button>
+            {!isManagerForFreeConsumption && (
+              <Button
+                onClick={() => setPaymentMethod("credit")}
+                variant={paymentMethod === "credit" ? "default" : "outline"}
+                className={`py-6 flex-col ${
+                  paymentMethod === "credit"
+                    ? "bg-orange-600 hover:bg-orange-700"
+                    : "border-gray-600 hover:bg-gray-700"
+                }`}
+              >
+                <Users className="w-6 h-6 mb-1" />
+                <span className="text-sm">Crédito</span>
+              </Button>
+            )}
+            {isManagerForFreeConsumption && (
+              <Button
+                onClick={() => setPaymentMethod("manager_consumption")}
+                variant={paymentMethod === "manager_consumption" ? "default" : "outline"}
+                className={`py-6 flex-col ${
+                  paymentMethod === "manager_consumption"
+                    ? "bg-purple-600 hover:bg-purple-700"
+                    : "border-gray-600 hover:bg-gray-700"
+                } col-span-1`}
+              >
+                <Crown className="w-6 h-6 mb-1" />
+                <span className="text-sm">Consumo Gerência</span>
+              </Button>
+            )}
           </div>
+          
+          {/* Show Credit option for managers if they want to pay for someone else */}
+          {isManagerForFreeConsumption && (
+            <div className="grid grid-cols-1 gap-3">
+              <Button
+                onClick={() => setPaymentMethod("credit")}
+                variant={paymentMethod === "credit" ? "default" : "outline"}
+                className={`py-4 flex-col ${
+                  paymentMethod === "credit"
+                    ? "bg-orange-600 hover:bg-orange-700"
+                    : "border-gray-600 hover:bg-gray-700"
+                }`}
+              >
+                <Users className="w-5 h-5 mb-1" />
+                <span className="text-sm">Pagar para Cliente (Crédito)</span>
+              </Button>
+            </div>
+          )}
 
           {/* Payment Method Forms */}
           {paymentMethod === "cash" && (
@@ -290,6 +340,23 @@ export function PaymentModal() {
                   Será adicionado ao crédito: {formatCurrency(selectedOrder.totalAmount)}
                 </p>
               )}
+            </div>
+          )}
+
+          {paymentMethod === "manager_consumption" && (
+            <div className="space-y-2">
+              <div className="bg-purple-500 bg-opacity-20 p-4 rounded-lg border border-purple-500">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Crown className="w-5 h-5 text-purple-400" />
+                  <h3 className="font-medium text-purple-400">Consumo de Gerência</h3>
+                </div>
+                <p className="text-sm text-gray-300">
+                  Este consumo será registrado como gratuito para o gerente {user?.firstName || user?.id}.
+                </p>
+                <p className="text-xs text-gray-400 mt-2">
+                  Total: {formatCurrency(selectedOrder.totalAmount)} - <span className="text-green-400 font-medium">GRATUITO</span>
+                </p>
+              </div>
             </div>
           )}
 

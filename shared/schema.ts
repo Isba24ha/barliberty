@@ -39,7 +39,7 @@ export const tableStatusEnum = pgEnum("table_status", ["free", "occupied", "rese
 export const orderStatusEnum = pgEnum("order_status", ["pending", "preparing", "ready", "completed", "cancelled"]);
 
 // Payment method enum
-export const paymentMethodEnum = pgEnum("payment_method", ["cash", "mobile_money", "credit", "partial"]);
+export const paymentMethodEnum = pgEnum("payment_method", ["cash", "mobile_money", "credit", "partial", "manager_consumption"]);
 
 // Table location enum
 export const tableLocationEnum = pgEnum("table_location", ["main_hall", "balcony", "terrace"]);
