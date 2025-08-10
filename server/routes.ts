@@ -595,10 +595,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Order routes
   app.get("/api/orders", requireAuth, async (req, res) => {
     try {
-      const { status, date } = req.query;
+      const { status, date, limit, offset } = req.query;
+      
+      // Parse pagination parameters
+      const limitNum = limit ? parseInt(limit as string) : 50; // Default limit of 50
+      const offsetNum = offset ? parseInt(offset as string) : 0;
       
       if (status === "completed" && date) {
-        // Filter completed orders by date
+        // Filter completed orders by date - use original method for now
         const orders = await storage.getAllOrders();
         const filterDate = new Date(date as string);
         const nextDate = new Date(filterDate);
@@ -613,7 +617,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         res.json(filteredOrders);
       } else {
-        const orders = await storage.getAllOrders();
+        // Use pagination for regular requests
+        const orders = await storage.getAllOrders(limitNum, offsetNum);
         res.json(orders);
       }
     } catch (error) {

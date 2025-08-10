@@ -33,7 +33,7 @@ import {
   type SessionStats,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, sum, count, sql, gte, lt, isNull } from "drizzle-orm";
+import { eq, and, desc, asc, sum, count, sql, gte, lt, isNull, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -335,34 +335,130 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Order operations
-  async getAllOrders(): Promise<OrderWithItems[]> {
-    const ordersResult = await db
+  async getAllOrders(limit?: number, offset?: number): Promise<OrderWithItems[]> {
+    // Base query for orders with joins
+    let orderQuery = db
       .select()
       .from(orders)
       .leftJoin(tables, eq(orders.tableId, tables.id))
       .leftJoin(users, eq(orders.serverId, users.id))
       .orderBy(desc(orders.createdAt));
 
-    const ordersWithItems = await Promise.all(
-      ordersResult.map(async (orderResult) => {
-        const order = orderResult.orders;
-        const items = await db
-          .select()
-          .from(orderItems)
-          .leftJoin(products, eq(orderItems.productId, products.id))
-          .where(eq(orderItems.orderId, order.id));
+    // Apply pagination if provided
+    if (limit !== undefined) {
+      orderQuery = orderQuery.limit(limit);
+      if (offset !== undefined) {
+        orderQuery = orderQuery.offset(offset);
+      }
+    }
 
-        return {
-          ...order,
-          items: items.map((item) => ({
-            ...item.order_items,
-            product: item.products!,
-          })),
-          table: orderResult.tables || undefined,
-          server: orderResult.users || undefined,
-        };
-      })
-    );
+    const ordersResult = await orderQuery;
+
+    if (ordersResult.length === 0) {
+      return [];
+    }
+
+    // Get all order IDs for batch fetching items
+    const orderIds = ordersResult.map(result => result.orders.id);
+
+    // Batch fetch all order items in a single query
+    const allItems = await db
+      .select()
+      .from(orderItems)
+      .leftJoin(products, eq(orderItems.productId, products.id))
+      .where(sql`${orderItems.orderId} IN (${orderIds.join(',')})`);
+
+    // Group items by order ID
+    const itemsByOrderId = allItems.reduce((acc, item) => {
+      const orderId = item.order_items.orderId;
+      if (!acc[orderId]) {
+        acc[orderId] = [];
+      }
+      acc[orderId].push({
+        ...item.order_items,
+        product: item.products!,
+      });
+      return acc;
+    }, {} as Record<number, any[]>);
+
+    // Combine orders with their items
+    const ordersWithItems = ordersResult.map((orderResult) => {
+      const order = orderResult.orders;
+      return {
+        ...order,
+        items: itemsByOrderId[order.id] || [],
+        table: orderResult.tables || undefined,
+        server: orderResult.users || undefined,
+      };
+    });
+
+    return ordersWithItems;
+  }
+
+  async getOrdersByDateAndStatus(
+    date: Date, 
+    status: string, 
+    limit: number = 50, 
+    offset: number = 0
+  ): Promise<OrderWithItems[]> {
+    const filterDate = new Date(date);
+    const nextDate = new Date(filterDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+
+    // Database-level filtering for better performance
+    const ordersResult = await db
+      .select()
+      .from(orders)
+      .leftJoin(tables, eq(orders.tableId, tables.id))
+      .leftJoin(users, eq(orders.serverId, users.id))
+      .where(
+        and(
+          eq(orders.status, status as any),
+          sql`${orders.createdAt} >= ${filterDate.toISOString()}`,
+          sql`${orders.createdAt} < ${nextDate.toISOString()}`
+        )
+      )
+      .orderBy(desc(orders.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    if (ordersResult.length === 0) {
+      return [];
+    }
+
+    // Get all order IDs for batch fetching items
+    const orderIds = ordersResult.map(result => result.orders.id);
+
+    // Batch fetch all order items in a single query
+    const allItems = await db
+      .select()
+      .from(orderItems)
+      .leftJoin(products, eq(orderItems.productId, products.id))
+      .where(sql`${orderItems.orderId} IN (${orderIds.join(',')})`);
+
+    // Group items by order ID
+    const itemsByOrderId = allItems.reduce((acc, item) => {
+      const orderId = item.order_items.orderId;
+      if (!acc[orderId]) {
+        acc[orderId] = [];
+      }
+      acc[orderId].push({
+        ...item.order_items,
+        product: item.products!,
+      });
+      return acc;
+    }, {} as Record<number, any[]>);
+
+    // Combine orders with their items
+    const ordersWithItems = ordersResult.map((orderResult) => {
+      const order = orderResult.orders;
+      return {
+        ...order,
+        items: itemsByOrderId[order.id] || [],
+        table: orderResult.tables || undefined,
+        server: orderResult.users || undefined,
+      };
+    });
 
     return ordersWithItems;
   }
