@@ -354,43 +354,27 @@ export class DatabaseStorage implements IStorage {
 
     const ordersResult = await orderQuery;
 
-    if (ordersResult.length === 0) {
-      return [];
-    }
+    // Use the original approach for now - individual queries for each order
+    const ordersWithItems = await Promise.all(
+      ordersResult.map(async (orderResult) => {
+        const order = orderResult.orders;
+        const items = await db
+          .select()
+          .from(orderItems)
+          .leftJoin(products, eq(orderItems.productId, products.id))
+          .where(eq(orderItems.orderId, order.id));
 
-    // Get all order IDs for batch fetching items
-    const orderIds = ordersResult.map(result => result.orders.id);
-
-    // Batch fetch all order items in a single query
-    const allItems = await db
-      .select()
-      .from(orderItems)
-      .leftJoin(products, eq(orderItems.productId, products.id))
-      .where(sql`${orderItems.orderId} IN (${orderIds.join(',')})`);
-
-    // Group items by order ID
-    const itemsByOrderId = allItems.reduce((acc, item) => {
-      const orderId = item.order_items.orderId;
-      if (!acc[orderId]) {
-        acc[orderId] = [];
-      }
-      acc[orderId].push({
-        ...item.order_items,
-        product: item.products!,
-      });
-      return acc;
-    }, {} as Record<number, any[]>);
-
-    // Combine orders with their items
-    const ordersWithItems = ordersResult.map((orderResult) => {
-      const order = orderResult.orders;
-      return {
-        ...order,
-        items: itemsByOrderId[order.id] || [],
-        table: orderResult.tables || undefined,
-        server: orderResult.users || undefined,
-      };
-    });
+        return {
+          ...order,
+          items: items.map((item) => ({
+            ...item.order_items,
+            product: item.products!,
+          })),
+          table: orderResult.tables || undefined,
+          server: orderResult.users || undefined,
+        };
+      })
+    );
 
     return ordersWithItems;
   }
@@ -429,36 +413,27 @@ export class DatabaseStorage implements IStorage {
     // Get all order IDs for batch fetching items
     const orderIds = ordersResult.map(result => result.orders.id);
 
-    // Batch fetch all order items in a single query
-    const allItems = await db
-      .select()
-      .from(orderItems)
-      .leftJoin(products, eq(orderItems.productId, products.id))
-      .where(sql`${orderItems.orderId} IN (${orderIds.join(',')})`);
+    // Use individual queries for each order (same as original approach)
+    const ordersWithItems = await Promise.all(
+      ordersResult.map(async (orderResult) => {
+        const order = orderResult.orders;
+        const items = await db
+          .select()
+          .from(orderItems)
+          .leftJoin(products, eq(orderItems.productId, products.id))
+          .where(eq(orderItems.orderId, order.id));
 
-    // Group items by order ID
-    const itemsByOrderId = allItems.reduce((acc, item) => {
-      const orderId = item.order_items.orderId;
-      if (!acc[orderId]) {
-        acc[orderId] = [];
-      }
-      acc[orderId].push({
-        ...item.order_items,
-        product: item.products!,
-      });
-      return acc;
-    }, {} as Record<number, any[]>);
-
-    // Combine orders with their items
-    const ordersWithItems = ordersResult.map((orderResult) => {
-      const order = orderResult.orders;
-      return {
-        ...order,
-        items: itemsByOrderId[order.id] || [],
-        table: orderResult.tables || undefined,
-        server: orderResult.users || undefined,
-      };
-    });
+        return {
+          ...order,
+          items: items.map((item) => ({
+            ...item.order_items,
+            product: item.products!,
+          })),
+          table: orderResult.tables || undefined,
+          server: orderResult.users || undefined,
+        };
+      })
+    );
 
     return ordersWithItems;
   }
