@@ -1586,8 +1586,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Export products sold by session (NEW FEATURE)
+  // Export products sold by session (NEW FEATURE)  
   app.get("/api/manager/sessions/:sessionId/products-export", async (req, res) => {
+    console.log(`[DEBUG EXPORT] Export endpoint called for session ${req.params.sessionId}`);
+    
     try {
       // Manual authentication check for debugging
       const userSession = req.session as any;
@@ -1601,9 +1603,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const sessionId = parseInt(req.params.sessionId);
-      console.log(`[DEBUG] Products export requested for session: ${sessionId} by user: ${userSession.user.id}`);
+      console.log(`[DEBUG EXPORT] Products export requested for session: ${sessionId} by user: ${userSession.user.id}`);
       
       if (isNaN(sessionId)) {
+        console.log(`[DEBUG EXPORT] Invalid session ID: ${req.params.sessionId}`);
         return res.status(400).json({ message: "ID da sessão inválido" });
       }
       
