@@ -423,26 +423,37 @@ export default function ManagerDashboard() {
       if (response.ok) {
         const data = await response.json();
         
+        console.log('[DEBUG] Export response data:', data);
+        
+        // Check if response data is valid
+        if (!data || !data.sessionInfo) {
+          throw new Error('Dados de resposta inválidos do servidor');
+        }
+        
         // Check if there are products to export
         if (!data.products || data.products.length === 0) {
           toast({
             title: "Aviso",
             description: "Nenhum produto vendido encontrado nesta sessão.",
-            variant: "destructive",
           });
           return;
         }
         
-        // Convert to CSV
-        const headers = Object.keys(data.products[0]);
+        // Safely get headers from first product
+        const firstProduct = data.products[0];
+        if (!firstProduct || typeof firstProduct !== 'object') {
+          throw new Error('Formato de produto inválido');
+        }
+        
+        const headers = Object.keys(firstProduct);
         const csvContent = [
           `# Relatório de Produtos Vendidos - Sessão ${sessionId}`,
-          `# Data: ${data.sessionInfo.date}`,
-          `# Turno: ${data.sessionInfo.shift}`,
-          `# Usuário: ${data.sessionInfo.user}`,
-          `# Total de Produtos: ${data.sessionInfo.totalProducts}`,
-          `# Receita Total: ${data.sessionInfo.totalRevenue} F CFA`,
-          `# Exportado em: ${data.exportDate}`,
+          `# Data: ${data.sessionInfo.date || 'N/A'}`,
+          `# Turno: ${data.sessionInfo.shift || 'N/A'}`,
+          `# Usuário: ${data.sessionInfo.user || 'N/A'}`,
+          `# Total de Produtos: ${data.sessionInfo.totalProducts || 0}`,
+          `# Receita Total: ${data.sessionInfo.totalRevenue || '0.00'} F CFA`,
+          `# Exportado em: ${data.exportDate || new Date().toLocaleString('pt-PT')}`,
           '', // Empty line
           headers.join(','),
           ...data.products.map((product: any) => 
@@ -455,18 +466,24 @@ export default function ManagerDashboard() {
         const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
-        a.download = `produtos_sessao_${sessionId}_${data.sessionInfo.date}.csv`;
+        a.download = `produtos_sessao_${sessionId}_${data.sessionInfo.date || 'unknown'}.csv`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         
         toast({
           title: "Sucesso",
-          description: `Lista de produtos exportada! ${data.sessionInfo.totalProducts} produtos vendidos.`,
+          description: `Lista de produtos exportada! ${data.sessionInfo.totalProducts || 0} produtos vendidos.`,
         });
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Falha na exportação de produtos');
+        let errorMessage = 'Falha na exportação de produtos';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          errorMessage = `Erro HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('Export error:', error);
