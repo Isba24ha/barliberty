@@ -452,7 +452,8 @@ export default function ManagerDashboard() {
           throw new Error('Formato de produto inválido');
         }
         
-        const headers = Object.keys(firstProduct);
+        // Fixed headers to ensure proper product name display
+        const headers = ['Produto', 'Categoria', 'Quantidade Total', 'Preço Unitário (F CFA)', 'Receita Total (F CFA)', 'Número de Pedidos', 'Primeira Venda', 'Última Venda'];
         const csvContent = [
           `# Relatório de Produtos Vendidos - Sessão ${sessionId}`,
           `# Data: ${data.sessionInfo.date || 'N/A'}`,
