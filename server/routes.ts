@@ -1583,12 +1583,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/manager/sessions/:sessionId/products-export", requireAuth, requireRole(["manager"]), async (req, res) => {
     try {
       const sessionId = parseInt(req.params.sessionId);
+      console.log(`[DEBUG] Products export requested for session: ${sessionId}`);
+      
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ message: "ID da sessão inválido" });
+      }
       
       // Get session details
       const session = await storage.getBarSession(sessionId);
       if (!session) {
+        console.log(`[DEBUG] Session ${sessionId} not found`);
         return res.status(404).json({ message: "Sessão não encontrada" });
       }
+
+      console.log(`[DEBUG] Found session: ${session.id}, user: ${session.userId}, shift: ${session.shiftType}`);
 
       // Get all orders for this session with products
       const ordersWithProducts = await db
@@ -1612,6 +1620,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(orders.sessionId, sessionId))
         .orderBy(desc(orders.createdAt), products.name);
 
+      console.log(`[DEBUG] Found ${ordersWithProducts.length} order items for session ${sessionId}`);
+
+      if (ordersWithProducts.length === 0) {
+        // Return empty data structure instead of error
+        return res.json({
+          sessionInfo: {
+            id: session.id,
+            date: session.createdAt?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+            shift: session.shiftType,
+            user: session.userId,
+            totalProducts: 0,
+            totalRevenue: "0.00"
+          },
+          products: [],
+          exportDate: new Date().toLocaleString('pt-PT')
+        });
+      }
+
       // Group by product for summary
       const productSummary = ordersWithProducts.reduce((acc, order) => {
         const key = order.productName;
@@ -1621,12 +1647,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             category: order.categoryName || 'Sem categoria',
             totalQuantity: 0,
             totalRevenue: 0,
-            unitPrice: parseFloat(order.unitPrice),
+            unitPrice: parseFloat(order.unitPrice || "0"),
             orders: []
           };
         }
         acc[key].totalQuantity += order.quantity;
-        acc[key].totalRevenue += parseFloat(order.totalPrice);
+        acc[key].totalRevenue += parseFloat(order.totalPrice || "0");
         acc[key].orders.push({
           orderId: order.orderId,
           date: order.orderDate,
@@ -1645,12 +1671,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'Preço Unitário (F CFA)': item.unitPrice.toFixed(2),
         'Receita Total (F CFA)': item.totalRevenue.toFixed(2),
         'Número de Pedidos': item.orders.length,
-        'Primeira Venda': new Date(Math.min(...item.orders.map((o: any) => new Date(o.date).getTime()))).toLocaleString('pt-PT'),
-        'Última Venda': new Date(Math.max(...item.orders.map((o: any) => new Date(o.date).getTime()))).toLocaleString('pt-PT')
+        'Primeira Venda': item.orders.length > 0 ? new Date(Math.min(...item.orders.map((o: any) => new Date(o.date).getTime()))).toLocaleString('pt-PT') : 'N/A',
+        'Última Venda': item.orders.length > 0 ? new Date(Math.max(...item.orders.map((o: any) => new Date(o.date).getTime()))).toLocaleString('pt-PT') : 'N/A'
       }));
 
       // Sort by total revenue descending
       csvData.sort((a, b) => parseFloat(b['Receita Total (F CFA)']) - parseFloat(a['Receita Total (F CFA)']));
+
+      console.log(`[DEBUG] Successfully generated products export with ${csvData.length} products`);
 
       res.json({
         sessionInfo: {
@@ -1666,7 +1694,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error generating products export:", error);
-      res.status(500).json({ message: "Erro ao gerar exportação de produtos vendidos" });
+      res.status(500).json({ message: `Erro ao gerar exportação de produtos vendidos: ${error.message}` });
     }
   });
 

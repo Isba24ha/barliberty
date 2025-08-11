@@ -423,8 +423,18 @@ export default function ManagerDashboard() {
       if (response.ok) {
         const data = await response.json();
         
+        // Check if there are products to export
+        if (!data.products || data.products.length === 0) {
+          toast({
+            title: "Aviso",
+            description: "Nenhum produto vendido encontrado nesta sessão.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         // Convert to CSV
-        const headers = Object.keys(data.products[0] || {});
+        const headers = Object.keys(data.products[0]);
         const csvContent = [
           `# Relatório de Produtos Vendidos - Sessão ${sessionId}`,
           `# Data: ${data.sessionInfo.date}`,
@@ -436,7 +446,7 @@ export default function ManagerDashboard() {
           '', // Empty line
           headers.join(','),
           ...data.products.map((product: any) => 
-            headers.map(header => `"${product[header]}"`).join(',')
+            headers.map(header => `"${product[header] || ''}"`).join(',')
           )
         ].join('\n');
 
@@ -455,12 +465,14 @@ export default function ManagerDashboard() {
           description: `Lista de produtos exportada! ${data.sessionInfo.totalProducts} produtos vendidos.`,
         });
       } else {
-        throw new Error('Falha na exportação de produtos');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Falha na exportação de produtos');
       }
     } catch (error) {
+      console.error('Export error:', error);
       toast({
         title: "Erro",
-        description: "Falha ao exportar lista de produtos vendidos",
+        description: error instanceof Error ? error.message : "Falha ao exportar lista de produtos vendidos",
         variant: "destructive",
       });
     }
