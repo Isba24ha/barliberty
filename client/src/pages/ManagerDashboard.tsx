@@ -416,9 +416,16 @@ export default function ManagerDashboard() {
   // NEW: Export products sold by session
   const handleExportSessionProducts = async (sessionId: number) => {
     try {
+      console.log(`[DEBUG Frontend] Starting export for session ${sessionId}`);
       const response = await fetch(`/api/manager/sessions/${sessionId}/products-export`, {
         credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
       });
+      
+      console.log(`[DEBUG Frontend] Response status: ${response.status}, ok: ${response.ok}`);
       
       if (response.ok) {
         const data = await response.json();

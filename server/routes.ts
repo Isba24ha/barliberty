@@ -30,7 +30,10 @@ import { and, eq, gte, lt, sql, sum, count, desc, asc } from "drizzle-orm";
 const requireAuth = (req: any, res: any, next: any) => {
   try {
     const session = req.session as any;
-    console.log(`[DEBUG AUTH] Route: ${req.method} ${req.path}, Session exists: ${!!session}, User exists: ${!!session?.user}`);
+    console.log(`[DEBUG AUTH] Route: ${req.method} ${req.path}`);
+    console.log(`[DEBUG AUTH] Session ID: ${session?.id || 'No session ID'}`);
+    console.log(`[DEBUG AUTH] Session data:`, session ? Object.keys(session) : 'No session');
+    console.log(`[DEBUG AUTH] Session user:`, session?.user);
     
     // Check if session exists and has user data
     if (!session || !session.user) {
