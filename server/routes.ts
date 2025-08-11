@@ -27,7 +27,58 @@ import {
 import { and, eq, gte, lt, sql, sum, count, desc, asc } from "drizzle-orm";
 
 // Enhanced auth middleware for production
-const requireAuth = (req: any, res: any, next: any) => {
+const requireAuth = (roleOrReqOrRes?: any, resOrNext?: any, nextOrUndefined?: any) => {
+  // Handle role-based auth: requireAuth("manager")
+  if (typeof roleOrReqOrRes === 'string') {
+    const requiredRole = roleOrReqOrRes;
+    return (req: any, res: any, next: any) => {
+      try {
+        const session = req.session as any;
+        console.log(`[DEBUG AUTH] Route: ${req.method} ${req.path}`);
+        console.log(`[DEBUG AUTH] Session ID: ${session?.id || 'No session ID'}`);
+        console.log(`[DEBUG AUTH] Session data:`, session ? Object.keys(session) : 'No session');
+        console.log(`[DEBUG AUTH] Session user:`, session?.user);
+        
+        if (!session || !session.user) {
+          console.log(`[DEBUG AUTH] Auth failed - no session or user. Session: ${!!session}, User: ${!!session?.user}`);
+          return res.status(401).json({ 
+            message: "Não autorizado",
+            details: "Sessão inválida ou expirada" 
+          });
+        }
+
+        if (!session.user.id || !session.user.role) {
+          console.log(`[DEBUG AUTH] Auth failed - invalid user data. ID: ${session.user.id}, Role: ${session.user.role}`);
+          return res.status(401).json({ 
+            message: "Não autorizado",
+            details: "Dados de usuário inválidos" 
+          });
+        }
+
+        if (session.user.role !== requiredRole) {
+          console.log(`[DEBUG AUTH] Access denied - required role: ${requiredRole}, user role: ${session.user.role}`);
+          return res.status(403).json({ message: "Acesso negado" });
+        }
+
+        session.lastActivity = new Date().toISOString();
+        req.user = session.user;
+        console.log(`[DEBUG AUTH] Auth successful for user: ${req.user.id}, role: ${req.user.role}`);
+        
+        next();
+      } catch (error) {
+        console.error('Auth middleware error:', error);
+        return res.status(500).json({ 
+          message: "Erro de autenticação",
+          details: process.env.NODE_ENV === 'development' ? error.message : "Erro interno" 
+        });
+      }
+    };
+  }
+  
+  // Handle regular auth: requireAuth(req, res, next)
+  const req = roleOrReqOrRes;
+  const res = resOrNext;
+  const next = nextOrUndefined;
   try {
     const session = req.session as any;
     console.log(`[DEBUG AUTH] Route: ${req.method} ${req.path}`);
@@ -1107,6 +1158,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching session details:", error);
       res.status(500).json({ message: "Erro ao buscar detalhes da sessão" });
+    }
+  });
+
+  // Manager - Tables with ongoing sales
+  app.get("/api/manager/active-tables", requireAuth("manager"), async (req, res) => {
+    try {
+      // Get current active session
+      const currentSession = await db
+        .select()
+        .from(barSessions)
+        .where(eq(barSessions.isActive, true))
+        .limit(1);
+
+      if (!currentSession.length) {
+        return res.json([]);
+      }
+
+      const sessionId = currentSession[0].id;
+
+      // Get tables with pending orders in current session
+      const tablesWithOrders = await db.execute(sql`
+        SELECT DISTINCT
+          t.id as table_id,
+          t.number as table_number,
+          t.location,
+          t.status,
+          COUNT(DISTINCT o.id) as order_count,
+          SUM(DISTINCT o.total_amount::numeric) as total_amount,
+          ARRAY_AGG(DISTINCT p.name) as products,
+          MAX(o.created_at) as last_order_time,
+          COALESCE(u.first_name || ' ' || u.last_name, o.server_id) as server_name
+        FROM tables t
+        INNER JOIN orders o ON t.id = o.table_id
+        INNER JOIN order_items oi ON o.id = oi.order_id
+        INNER JOIN products p ON oi.product_id = p.id
+        LEFT JOIN users u ON o.server_id = u.id
+        WHERE o.session_id = ${sessionId}
+          AND o.status IN ('pending', 'preparing')
+        GROUP BY t.id, t.number, t.location, t.status, u.first_name, u.last_name, o.server_id
+        ORDER BY t.number ASC
+      `);
+
+      const formattedTables = tablesWithOrders.rows.map((row: any) => ({
+        tableId: row.table_id,
+        tableNumber: row.table_number,
+        location: row.location,
+        status: row.status,
+        orderCount: parseInt(row.order_count),
+        totalAmount: parseFloat(row.total_amount || "0").toFixed(2),
+        products: row.products || [],
+        lastOrderTime: row.last_order_time,
+        serverName: row.server_name,
+        formattedAmount: `${parseFloat(row.total_amount || "0").toFixed(2)} F CFA`
+      }));
+
+      res.json(formattedTables);
+    } catch (error: any) {
+      console.error("[ACTIVE TABLES ERROR]", error);
+      res.status(500).json({ error: "Erro ao buscar mesas activas: " + error.message });
     }
   });
 

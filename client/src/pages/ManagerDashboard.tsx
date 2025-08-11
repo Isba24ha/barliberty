@@ -28,7 +28,9 @@ import {
   Activity,
   AlertTriangle,
   CreditCard,
-  Search
+  Search,
+  MapPin,
+  Timer
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
@@ -101,6 +103,12 @@ export default function ManagerDashboard() {
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/manager/users"],
+  });
+
+  // Query for active tables with ongoing sales
+  const { data: activeTables = [], refetch: refetchActiveTables } = useQuery({
+    queryKey: ["/api/manager/active-tables"],
+    refetchInterval: 10000, // Refresh every 10 seconds for real-time updates
   });
 
   // New queries for enhanced features
@@ -677,9 +685,10 @@ export default function ManagerDashboard() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6 bg-gray-800 border-gray-700">
+        <TabsList className="grid w-full grid-cols-7 bg-gray-800 border-gray-700">
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="sales">Vendas</TabsTrigger>
+          <TabsTrigger value="active-tables">Mesas Ativas</TabsTrigger>
           <TabsTrigger value="users">Utilizadores</TabsTrigger>
           <TabsTrigger value="inventory">Stock</TabsTrigger>
           <TabsTrigger value="credits">Clientes Crédito</TabsTrigger>
@@ -1033,6 +1042,170 @@ export default function ManagerDashboard() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Active Tables Tab */}
+        <TabsContent value="active-tables" className="space-y-4">
+          <Card className="bg-gray-800 border-gray-700">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-white flex items-center">
+                  <MapPin className="w-5 h-5 mr-2" />
+                  Mesas com Vendas em Curso
+                </CardTitle>
+                <div className="flex items-center space-x-2">
+                  <Badge variant="outline" className="text-green-400 border-green-400">
+                    <Activity className="w-3 h-3 mr-1" />
+                    Tempo Real
+                  </Badge>
+                  <Button 
+                    onClick={() => refetchActiveTables()} 
+                    size="sm" 
+                    variant="outline"
+                    className="border-gray-600"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Atualizar
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {activeTables.length > 0 ? (
+                <div className="space-y-3">
+                  {activeTables.map((table: any) => (
+                    <div key={table.tableId} className="bg-gray-700 p-4 rounded-lg border border-gray-600">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+                            <span className="text-white font-bold text-lg">{table.tableNumber}</span>
+                          </div>
+                          <div>
+                            <h3 className="text-white font-semibold">Mesa {table.tableNumber}</h3>
+                            <p className="text-sm text-gray-400">
+                              {table.location === 'main_hall' ? 'Salão Principal' : 
+                               table.location === 'terrace' ? 'Terraço' : 
+                               table.location === 'vip' ? 'VIP' : table.location}
+                            </p>
+                            <p className="text-xs text-gray-500">Servidor: {table.serverName}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-green-400">{table.formattedAmount}</div>
+                          <div className="text-sm text-gray-400">
+                            {table.orderCount} {table.orderCount === 1 ? 'pedido' : 'pedidos'}
+                          </div>
+                          <div className="text-xs text-gray-500 flex items-center mt-1">
+                            <Timer className="w-3 h-3 mr-1" />
+                            {new Date(table.lastOrderTime).toLocaleTimeString('pt-PT', { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Products in orders */}
+                      <div className="border-t border-gray-600 pt-3">
+                        <p className="text-sm text-gray-400 mb-2">Produtos em preparação:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {table.products.map((product: string, index: number) => (
+                            <Badge key={index} variant="secondary" className="bg-gray-600 text-gray-200">
+                              {product}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Table status */}
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-600">
+                        <Badge 
+                          className={
+                            table.status === 'occupied' ? 'bg-red-600' : 
+                            table.status === 'pending_order' ? 'bg-orange-600' : 
+                            'bg-gray-600'
+                          }
+                        >
+                          {table.status === 'occupied' ? 'Ocupada' : 
+                           table.status === 'pending_order' ? 'Pedido Pendente' : 
+                           table.status}
+                        </Badge>
+                        <p className="text-xs text-gray-500">
+                          Mesa ID: {table.tableId}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <MapPin className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-white mb-2">Nenhuma Mesa com Vendas Ativas</h3>
+                  <p className="text-gray-400 mb-4">
+                    Todas as mesas estão livres ou não há pedidos em preparação.
+                  </p>
+                  <div className="bg-gray-700 p-4 rounded-lg max-w-md mx-auto">
+                    <p className="text-sm text-gray-300">
+                      Este painel mostra em tempo real todas as mesas que possuem pedidos com status:
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <Badge variant="outline" className="text-orange-400 border-orange-400">Pendente</Badge>
+                      <Badge variant="outline" className="text-blue-400 border-blue-400">Preparando</Badge>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Quick Stats for Active Tables */}
+          {activeTables.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="bg-gray-800 border-gray-700">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-5 h-5 text-blue-400" />
+                    <div>
+                      <p className="text-sm text-gray-400">Mesas Ativas</p>
+                      <p className="text-2xl font-bold text-white">{activeTables.length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gray-800 border-gray-700">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <ShoppingCart className="w-5 h-5 text-green-400" />
+                    <div>
+                      <p className="text-sm text-gray-400">Total Pedidos</p>
+                      <p className="text-2xl font-bold text-white">
+                        {activeTables.reduce((sum: number, table: any) => sum + table.orderCount, 0)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gray-800 border-gray-700">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <DollarSign className="w-5 h-5 text-yellow-400" />
+                    <div>
+                      <p className="text-sm text-gray-400">Valor Total</p>
+                      <p className="text-2xl font-bold text-white">
+                        {formatCurrency(
+                          activeTables.reduce((sum: number, table: any) => 
+                            sum + parseFloat(table.totalAmount), 0
+                          ).toFixed(2)
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </TabsContent>
 
         {/* Users Tab */}
