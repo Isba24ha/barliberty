@@ -1631,19 +1631,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[DEBUG] Found session: ${session.id}, user: ${session.userId}, shift: ${session.shiftType}`);
 
-      // Get all orders for this session with products
+      // Get all orders for this session with products - simplified query
       const ordersWithProducts = await db
-        .select({
-          orderId: orders.id,
-          orderDate: orders.createdAt,
-          productName: products.name,
-          quantity: orderItems.quantity,
-          unitPrice: orderItems.price,
-          totalPrice: sql<number>`(${orderItems.quantity} * ${orderItems.price})`,
-          categoryName: categories.name,
-          tableNumber: tables.number,
-          serverName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.id})`,
-        })
+        .select()
         .from(orders)
         .innerJoin(orderItems, eq(orders.id, orderItems.orderId))
         .innerJoin(products, eq(orderItems.productId, products.id))
@@ -1671,27 +1661,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Group by product for summary
-      const productSummary = ordersWithProducts.reduce((acc, order) => {
-        const key = order.productName;
+      // Group by product for summary using simplified structure
+      const productSummary = ordersWithProducts.reduce((acc, row) => {
+        const order = row.orders;
+        const orderItem = row.order_items;
+        const product = row.products;
+        const category = row.categories;
+        const table = row.tables;
+        const user = row.users;
+        
+        const key = product.name;
         if (!acc[key]) {
           acc[key] = {
-            productName: order.productName,
-            category: order.categoryName || 'Sem categoria',
+            productName: product.name,
+            category: category?.name || 'Sem categoria',
             totalQuantity: 0,
             totalRevenue: 0,
-            unitPrice: parseFloat(order.unitPrice || "0"),
+            unitPrice: parseFloat(orderItem.price || "0"),
             orders: []
           };
         }
-        acc[key].totalQuantity += order.quantity;
-        acc[key].totalRevenue += parseFloat(order.totalPrice || "0");
+        acc[key].totalQuantity += orderItem.quantity;
+        acc[key].totalRevenue += (orderItem.quantity * parseFloat(orderItem.price || "0"));
         acc[key].orders.push({
-          orderId: order.orderId,
-          date: order.orderDate,
-          quantity: order.quantity,
-          table: order.tableNumber,
-          server: order.serverName
+          orderId: order.id,
+          date: order.createdAt,
+          quantity: orderItem.quantity,
+          table: table?.number || null,
+          server: user ? `${user.firstName} ${user.lastName}` : order.serverId
         });
         return acc;
       }, {} as Record<string, any>);
