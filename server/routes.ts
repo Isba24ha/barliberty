@@ -1586,11 +1586,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Products export endpoint - working version
-  app.get("/api/manager/sessions/:sessionId/products-export", requireAuth, requireRole(["manager"]), async (req, res) => {
-    console.log(`[EXPORT] Starting export for session ${req.params.sessionId}`);
+  // Products export endpoint - simplified version without auth middleware  
+  app.get("/api/manager/sessions/:sessionId/products-export", async (req, res) => {
+    console.log(`[EXPORT] Export endpoint hit for session ${req.params.sessionId}`);
     
     try {
+      // Manual auth check
+      const userSession = req.session as any;
+      if (!userSession || !userSession.user || userSession.user.role !== 'manager') {
+        console.log(`[EXPORT] Auth failed - no valid manager session`);
+        return res.status(401).json({ message: "Não autorizado" });
+      }
+      
+      console.log(`[EXPORT] Auth passed for user: ${userSession.user.id}`);
+      
       const sessionId = parseInt(req.params.sessionId);
       if (isNaN(sessionId)) {
         return res.status(400).json({ message: "ID da sessão inválido" });
