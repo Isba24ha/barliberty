@@ -1587,12 +1587,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Export products sold by session (NEW FEATURE)
-  app.get("/api/manager/sessions/:sessionId/products-export", requireAuth, requireRole(["manager"]), async (req, res) => {
+  app.get("/api/manager/sessions/:sessionId/products-export", async (req, res) => {
     try {
+      // Manual authentication check for debugging
+      const userSession = req.session as any;
+      console.log(`[DEBUG EXPORT] Manual auth check - Session exists: ${!!userSession}`);
+      console.log(`[DEBUG EXPORT] Session keys:`, userSession ? Object.keys(userSession) : 'No session');
+      console.log(`[DEBUG EXPORT] User in session:`, userSession?.user);
+      
+      if (!userSession || !userSession.user || userSession.user.role !== 'manager') {
+        console.log(`[DEBUG EXPORT] Auth failed - Session: ${!!userSession}, User: ${!!userSession?.user}, Role: ${userSession?.user?.role}`);
+        return res.status(401).json({ message: "Não autorizado - Export" });
+      }
+      
       const sessionId = parseInt(req.params.sessionId);
-      console.log(`[DEBUG] Products export requested for session: ${sessionId} by user: ${req.user?.id || 'Unknown'}`);
-      console.log(`[DEBUG] Session data:`, req.session);
-      console.log(`[DEBUG] User data:`, req.user);
+      console.log(`[DEBUG] Products export requested for session: ${sessionId} by user: ${userSession.user.id}`);
       
       if (isNaN(sessionId)) {
         return res.status(400).json({ message: "ID da sessão inválido" });
