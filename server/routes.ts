@@ -1631,21 +1631,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[DEBUG] Found session: ${session.id}, user: ${session.userId}, shift: ${session.shiftType}`);
 
-      // Get all orders for this session with products - simplified query
-      const ordersWithProducts = await db
-        .select()
-        .from(orders)
-        .innerJoin(orderItems, eq(orders.id, orderItems.orderId))
-        .innerJoin(products, eq(orderItems.productId, products.id))
-        .leftJoin(categories, eq(products.categoryId, categories.id))
-        .leftJoin(tables, eq(orders.tableId, tables.id))
-        .leftJoin(users, eq(orders.serverId, users.id))
-        .where(eq(orders.sessionId, sessionId))
-        .orderBy(desc(orders.createdAt), products.name);
+      // Use raw SQL to get data with proper field access
+      const ordersWithProducts = await db.execute(sql`
+        SELECT 
+          o.id as order_id,
+          o.created_at as order_date,
+          p.name as product_name,
+          p.price as product_price,
+          oi.quantity,
+          oi.unit_price,
+          oi.total_price,
+          COALESCE(c.name, 'Sem categoria') as category_name,
+          t.number as table_number,
+          COALESCE(u.first_name || ' ' || u.last_name, o.server_id) as server_name
+        FROM orders o
+        INNER JOIN order_items oi ON o.id = oi.order_id
+        INNER JOIN products p ON oi.product_id = p.id
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN tables t ON o.table_id = t.id
+        LEFT JOIN users u ON o.server_id = u.id
+        WHERE o.session_id = ${sessionId}
+        ORDER BY o.created_at DESC, p.name
+      `);
 
-      console.log(`[DEBUG] Found ${ordersWithProducts.length} order items for session ${sessionId}`);
+      console.log(`[DEBUG] Found ${ordersWithProducts.rows.length} order items for session ${sessionId}`);
 
-      if (ordersWithProducts.length === 0) {
+      if (ordersWithProducts.rows.length === 0) {
         // Return empty data structure instead of error
         return res.json({
           sessionInfo: {
@@ -1661,34 +1672,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Group by product for summary using simplified structure
-      const productSummary = ordersWithProducts.reduce((acc, row) => {
-        const order = row.orders;
-        const orderItem = row.order_items;
-        const product = row.products;
-        const category = row.categories;
-        const table = row.tables;
-        const user = row.users;
+      // Group by product for summary using SQL results
+      const productSummary = ordersWithProducts.rows.reduce((acc, row: any) => {
+        const key = row.product_name;
+        const unitPrice = parseFloat(row.unit_price || "0");
+        const quantity = parseInt(row.quantity || "0");
         
-        const key = product.name;
+        console.log(`[DEBUG] Processing product: ${key}, unitPrice: ${unitPrice}, quantity: ${quantity}`);
+        
         if (!acc[key]) {
           acc[key] = {
-            productName: product.name,
-            category: category?.name || 'Sem categoria',
+            productName: row.product_name,
+            category: row.category_name || 'Sem categoria',
             totalQuantity: 0,
             totalRevenue: 0,
-            unitPrice: parseFloat(orderItem.price || "0"),
+            unitPrice: unitPrice,
             orders: []
           };
         }
-        acc[key].totalQuantity += orderItem.quantity;
-        acc[key].totalRevenue += (orderItem.quantity * parseFloat(orderItem.price || "0"));
+        acc[key].totalQuantity += quantity;
+        acc[key].totalRevenue += (quantity * unitPrice);
         acc[key].orders.push({
-          orderId: order.id,
-          date: order.createdAt,
-          quantity: orderItem.quantity,
-          table: table?.number || null,
-          server: user ? `${user.firstName} ${user.lastName}` : order.serverId
+          orderId: row.order_id,
+          date: row.order_date,
+          quantity: quantity,
+          table: row.table_number,
+          server: row.server_name
         });
         return acc;
       }, {} as Record<string, any>);
