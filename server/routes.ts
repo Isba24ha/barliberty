@@ -1639,7 +1639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           productName: products.name,
           quantity: orderItems.quantity,
           unitPrice: orderItems.price,
-          totalPrice: sql<string>`CAST(${orderItems.quantity} * CAST(${orderItems.price} AS DECIMAL) AS TEXT)`,
+          totalPrice: sql<number>`(${orderItems.quantity} * ${orderItems.price})`,
           categoryName: categories.name,
           tableNumber: tables.number,
           serverName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.id})`,
