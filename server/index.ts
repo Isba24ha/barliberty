@@ -1,16 +1,31 @@
+import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import cors from "cors";
 import crypto from "crypto";
-import cookieParser from "cookie-parser";
+import os from "os";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { pool } from "./db";
-import ConnectPgSimple from "connect-pg-simple";
+import { pool, shutdownPool } from "./db"; // Import the updated pool and shutdownPool
 
 const app = express();
 
 const isProduction = process.env.NODE_ENV === 'production';
+const PORT = parseInt(process.env.PORT || '3000', 10); // Render uses process.env.PORT for binding
+
+// Function to get the server's local IPv4 address (non-internal)
+const getLocalIp = () => {
+  const interfaces = os.networkInterfaces();
+  for (const iface of Object.values(interfaces)) {
+    if (!iface) continue;
+    for (const details of iface) {
+      if (details.family === 'IPv4' && !details.internal) {
+        return details.address;
+      }
+    }
+  }
+  return 'localhost';
+};
 
 // HTTPS redirect middleware for production
 if (isProduction) {
@@ -22,31 +37,22 @@ if (isProduction) {
   });
 }
 
-// CORS configuration for cross-origin requests
+// CORS configuration
 const corsOptions = {
   origin: function (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    // Define allowed origins based on environment
     const allowedOrigins = isProduction 
       ? [
           process.env.FRONTEND_URL,
-          process.env.REPLIT_DOMAIN ? `https://${process.env.REPLIT_DOMAIN}` : null,
-          'https://liberty-bar-management.replit.app',
-          // Add your custom domain here when deployed
-        ].filter(Boolean) // Remove null values
+          'https://liberty-bar-management.replit.app'
+        ].filter(Boolean)
       : [
-          'http://localhost:5000',
-          'http://localhost:3000',
-          'http://127.0.0.1:5000',
-          'http://127.0.0.1:3000',
-          // Add the current Replit preview URL
-          /https:\/\/.*\.replit\.dev$/,
-          /https:\/\/.*\.replit\.app$/
+          `http://localhost:${PORT}`,
+          `http://127.0.0.1:${PORT}`,
+          /https:\/\/.*\.replit\.(dev|app)$/
         ];
     
-    // Check if origin matches any allowed origin or pattern
     const isAllowed = allowedOrigins.some(allowedOrigin => {
       if (typeof allowedOrigin === 'string') {
         return origin === allowedOrigin;
@@ -56,54 +62,17 @@ const corsOptions = {
       return false;
     });
     
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      // In development, be more permissive
-      if (!isProduction) {
-        console.log('CORS: Allowing origin in development:', origin);
-        callback(null, true);
-      } else {
-        console.log('CORS: Blocking origin:', origin);
-        callback(new Error('Not allowed by CORS'));
-      }
-    }
+    callback(null, isAllowed || !isProduction);
   },
-  credentials: true, // Allow cookies to be sent
-  optionsSuccessStatus: 200,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  credentials: false,
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
 
-// Check database connection before starting
-async function checkDatabaseConnection() {
-  try {
-    const client = await pool.connect();
-    await client.query('SELECT NOW()');
-    client.release();
-    log('Database connection verified');
-    return true;
-  } catch (error) {
-    console.error('Database connection failed:', error);
-    return false;
-  }
-}
-
-// Log environment variables for production debugging
-if (process.env.NODE_ENV === 'production') {
-  log(`Environment variables check:`);
-  log(`FRONTEND_URL: ${process.env.FRONTEND_URL || 'NOT SET'}`);
-  log(`REPLIT_DOMAIN: ${process.env.REPLIT_DOMAIN || 'NOT SET'}`);
-  log(`DATABASE_URL: ${process.env.DATABASE_URL ? 'SET' : 'NOT SET'}`);
-  log(`SESSION_SECRET: ${process.env.SESSION_SECRET ? 'SET' : 'NOT SET'}`);
-}
-
-// Enhanced middleware configuration
+// Middleware configuration
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
-app.use(cookieParser()); // Add cookie parser middleware
 
 // Security headers
 app.use((req, res, next) => {
@@ -116,106 +85,109 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configure session with simplified settings for debugging
-const PgSession = ConnectPgSimple(session);
-
+// Session configuration
 const sessionConfig = {
-  store: new PgSession({
-    pool: pool,
-    tableName: 'sessions',
-    createTableIfMissing: true,
-    pruneSessionInterval: 60 * 15, // Clean up sessions every 15 minutes
-    errorLog: (error: any) => {
-      console.error('Session store error:', error);
-    }
-  }),
-  secret: process.env.SESSION_SECRET || "liberty-bar-management-secret-key-2025",
+  secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
   resave: false,
   saveUninitialized: false,
-  rolling: true, // Reset expiration on activity
-  name: 'liberty.session', // Use custom session name
-  cookie: {
-    secure: false, // Set to false for development
-    httpOnly: false, // Set to false for debugging cookie issues
-    maxAge: 8 * 60 * 60 * 1000, // 8 hours to match client session
-    sameSite: 'lax', // Back to 'lax' for same-origin requests
-    path: '/' // Ensure cookie is available for all paths
-  }
+  store: new session.MemoryStore()
 };
 
 app.use(session(sessionConfig));
 
-// Session debugging middleware (can be removed in production)
-if (process.env.NODE_ENV === 'development') {
-  app.use((req, res, next) => {
-    if (req.path.startsWith('/api') && req.path !== '/api/auth/user') {
-      console.log(`[Session] ${req.method} ${req.path} - User: ${req.session?.user?.id || 'Anonymous'}`);
-    }
-    next();
-  });
-}
-
+// Request logging
 app.use((req, res, next) => {
   const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+    if (req.path.startsWith("/api")) {
+      log(`${req.method} ${req.path} ${res.statusCode} in ${duration}ms`);
     }
   });
-
   next();
 });
 
-// Enhanced error handling middleware
+// Error handling
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('Unhandled error:', err);
-  
-  if (err.code === 'ECONNREFUSED') {
-    return res.status(503).json({ 
-      message: 'Database connection failed',
-      error: 'Service temporarily unavailable'
-    });
-  }
-  
-  if (err.name === 'ValidationError') {
-    return res.status(400).json({ 
-      message: 'Validation failed',
-      error: err.message
-    });
-  }
-  
+  console.error('Error:', err);
   res.status(500).json({ 
     message: 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    error: isProduction ? 'Something went wrong' : err.message
   });
 });
 
-// Graceful shutdown handling
-const shutdown = async (signal: string) => {
-  log(`${signal} received, shutting down gracefully`);
-  
+// Server startup
+(async () => {
   try {
-    await pool.end();
-    log('Database pool closed');
+    // Verify database connection with retry
+    let dbConnected = false;
+    let attempts = 0;
+    const maxAttempts = 5;
+    const retryDelay = 2000;
+
+    while (!dbConnected && attempts < maxAttempts) {
+      try {
+        const client = await pool.connect();
+        await client.query('SELECT NOW()');
+        client.release();
+        log('Database connection verified');
+        dbConnected = true;
+      } catch (error) {
+        attempts++;
+        console.error(`Database connection attempt ${attempts} failed:`, error);
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
+      }
+    }
+
+    if (!dbConnected) {
+      throw new Error('Failed to connect to database after multiple attempts');
+    }
+
+    const server = await registerRoutes(app);
+
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
+
+    const ip = getLocalIp();
+
+    server.listen(PORT, '0.0.0.0', () => {
+      log(`🚀 Server running on http://${ip}:${PORT}`);
+      log(`📊 Database: Connected`);
+      log(`🌐 Environment: ${app.get("env")}`);
+    });
+
+    server.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        log(`Port ${PORT} is already in use`);
+        log('Try:');
+        log(`1. Changing the PORT in your .env file`);
+        log(`2. Running 'netstat -ano | findstr :${PORT}' to find the process using the port`);
+        log(`3. Killing the process with 'taskkill /PID [PID] /F'`);
+      } else {
+        log(`Server error: ${err.message}`);
+      }
+      process.exit(1);
+    });
+
+  } catch (error) {
+    log(`Server startup failed: ${error}`);
+    await shutdownPool(); // Use the centralized shutdown function
+    process.exit(1);
+  }
+})();
+
+// Graceful shutdown handler
+const gracefulShutdown = async () => {
+  log('Starting graceful shutdown...');
+  try {
+    // Add any additional cleanup here if needed
+    await shutdownPool(); // Use the centralized shutdown function
+    log('Shutdown completed');
     process.exit(0);
   } catch (error) {
     console.error('Error during shutdown:', error);
@@ -223,44 +195,17 @@ const shutdown = async (signal: string) => {
   }
 };
 
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
+// Process termination handlers
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
-// Server startup
-(async () => {
-  try {
-    // Verify database connection before starting server
-    const dbConnected = await checkDatabaseConnection();
-    if (!dbConnected) {
-      log('Failed to connect to database, retrying in 5 seconds...');
-      setTimeout(() => process.exit(1), 5000);
-      return;
-    }
+// Uncaught exception handlers
+process.on('uncaughtException', async (err) => {
+  console.error('Uncaught exception:', err);
+  await gracefulShutdown();
+});
 
-    const server = await registerRoutes(app);
-
-    // Setup development or production serving
-    if (app.get("env") === "development") {
-      await setupVite(app, server);
-    } else {
-      serveStatic(app);
-    }
-
-    // ALWAYS serve the app on port 5000
-    const port = 5000;
-    server.listen({
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    }, () => {
-      log(`🚀 LIBERTY Bar Management System serving on port ${port}`);
-      log(`📊 Database: Connected and ready`);
-      log(`🔐 Session store: PostgreSQL`);
-      log(`🌐 Environment: ${app.get("env")}`);
-    });
-
-  } catch (error) {
-    log(`Failed to start server: ${error}`);
-    process.exit(1);
-  }
-})();
+process.on('unhandledRejection', async (reason, promise) => {
+  console.error('Unhandled rejection at:', promise, 'reason:', reason);
+  await gracefulShutdown();
+});
