@@ -1579,6 +1579,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export products sold by session (NEW FEATURE)
+  app.get("/api/manager/sessions/:sessionId/products-export", requireAuth, requireRole(["manager"]), async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      
+      // Get session details
+      const session = await storage.getBarSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: "Sessão não encontrada" });
+      }
+
+      // Get all orders for this session with products
+      const ordersWithProducts = await db
+        .select({
+          orderId: orders.id,
+          orderDate: orders.createdAt,
+          productName: products.name,
+          quantity: orderItems.quantity,
+          unitPrice: orderItems.price,
+          totalPrice: sql<string>`CAST(${orderItems.quantity} * CAST(${orderItems.price} AS DECIMAL) AS TEXT)`,
+          categoryName: categories.name,
+          tableNumber: tables.number,
+          serverName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.id})`,
+        })
+        .from(orders)
+        .innerJoin(orderItems, eq(orders.id, orderItems.orderId))
+        .innerJoin(products, eq(orderItems.productId, products.id))
+        .leftJoin(categories, eq(products.categoryId, categories.id))
+        .leftJoin(tables, eq(orders.tableId, tables.id))
+        .leftJoin(users, eq(orders.serverId, users.id))
+        .where(eq(orders.sessionId, sessionId))
+        .orderBy(desc(orders.createdAt), products.name);
+
+      // Group by product for summary
+      const productSummary = ordersWithProducts.reduce((acc, order) => {
+        const key = order.productName;
+        if (!acc[key]) {
+          acc[key] = {
+            productName: order.productName,
+            category: order.categoryName || 'Sem categoria',
+            totalQuantity: 0,
+            totalRevenue: 0,
+            unitPrice: parseFloat(order.unitPrice),
+            orders: []
+          };
+        }
+        acc[key].totalQuantity += order.quantity;
+        acc[key].totalRevenue += parseFloat(order.totalPrice);
+        acc[key].orders.push({
+          orderId: order.orderId,
+          date: order.orderDate,
+          quantity: order.quantity,
+          table: order.tableNumber,
+          server: order.serverName
+        });
+        return acc;
+      }, {} as Record<string, any>);
+
+      // Format for CSV export
+      const csvData = Object.values(productSummary).map((item: any) => ({
+        'Produto': item.productName,
+        'Categoria': item.category,
+        'Quantidade Total': item.totalQuantity,
+        'Preço Unitário (F CFA)': item.unitPrice.toFixed(2),
+        'Receita Total (F CFA)': item.totalRevenue.toFixed(2),
+        'Número de Pedidos': item.orders.length,
+        'Primeira Venda': new Date(Math.min(...item.orders.map((o: any) => new Date(o.date).getTime()))).toLocaleString('pt-PT'),
+        'Última Venda': new Date(Math.max(...item.orders.map((o: any) => new Date(o.date).getTime()))).toLocaleString('pt-PT')
+      }));
+
+      // Sort by total revenue descending
+      csvData.sort((a, b) => parseFloat(b['Receita Total (F CFA)']) - parseFloat(a['Receita Total (F CFA)']));
+
+      res.json({
+        sessionInfo: {
+          id: session.id,
+          date: session.createdAt?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+          shift: session.shiftType,
+          user: session.userId,
+          totalProducts: csvData.length,
+          totalRevenue: csvData.reduce((sum, item) => sum + parseFloat(item['Receita Total (F CFA)']), 0).toFixed(2)
+        },
+        products: csvData,
+        exportDate: new Date().toLocaleString('pt-PT')
+      });
+    } catch (error) {
+      console.error("Error generating products export:", error);
+      res.status(500).json({ message: "Erro ao gerar exportação de produtos vendidos" });
+    }
+  });
+
   // Manager users route
   app.get("/api/manager/users", requireAuth, async (req, res) => {
     try {

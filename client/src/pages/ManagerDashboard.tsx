@@ -413,6 +413,59 @@ export default function ManagerDashboard() {
     }
   };
 
+  // NEW: Export products sold by session
+  const handleExportSessionProducts = async (sessionId: number) => {
+    try {
+      const response = await fetch(`/api/manager/sessions/${sessionId}/products-export`, {
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Convert to CSV
+        const headers = Object.keys(data.products[0] || {});
+        const csvContent = [
+          `# Relatório de Produtos Vendidos - Sessão ${sessionId}`,
+          `# Data: ${data.sessionInfo.date}`,
+          `# Turno: ${data.sessionInfo.shift}`,
+          `# Usuário: ${data.sessionInfo.user}`,
+          `# Total de Produtos: ${data.sessionInfo.totalProducts}`,
+          `# Receita Total: ${data.sessionInfo.totalRevenue} F CFA`,
+          `# Exportado em: ${data.exportDate}`,
+          '', // Empty line
+          headers.join(','),
+          ...data.products.map((product: any) => 
+            headers.map(header => `"${product[header]}"`).join(',')
+          )
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `produtos_sessao_${sessionId}_${data.sessionInfo.date}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        
+        toast({
+          title: "Sucesso",
+          description: `Lista de produtos exportada! ${data.sessionInfo.totalProducts} produtos vendidos.`,
+        });
+      } else {
+        throw new Error('Falha na exportação de produtos');
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Falha ao exportar lista de produtos vendidos",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleViewSessionDetails = (sessionId: number) => {
     setSelectedSessionId(sessionId);
     setShowSessionModal(true);
@@ -667,6 +720,15 @@ export default function ManagerDashboard() {
                             onClick={() => handleExportSession(session.id)}
                           >
                             <Download className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="border-orange-600 text-orange-400 hover:bg-orange-600"
+                            onClick={() => handleExportSessionProducts(session.id)}
+                            title="Exportar Lista de Produtos Vendidos"
+                          >
+                            <Package className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
