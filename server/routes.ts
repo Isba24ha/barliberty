@@ -1586,16 +1586,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Products export endpoint - simplified version without auth middleware  
+  // Products export endpoint - with detailed session debugging  
   app.get("/api/manager/sessions/:sessionId/products-export", async (req, res) => {
     console.log(`[EXPORT] Export endpoint hit for session ${req.params.sessionId}`);
     
     try {
-      // Manual auth check
+      // Debug session information
+      console.log(`[EXPORT] Session ID from cookie:`, req.sessionID);
+      console.log(`[EXPORT] Session object keys:`, req.session ? Object.keys(req.session) : 'No session');
+      console.log(`[EXPORT] Full session data:`, JSON.stringify(req.session, null, 2));
+      console.log(`[EXPORT] User from session:`, (req.session as any)?.user);
+      console.log(`[EXPORT] Cookies received:`, req.headers.cookie);
+      
+      // Manual auth check with detailed logging
       const userSession = req.session as any;
-      if (!userSession || !userSession.user || userSession.user.role !== 'manager') {
-        console.log(`[EXPORT] Auth failed - no valid manager session`);
-        return res.status(401).json({ message: "Não autorizado" });
+      if (!userSession) {
+        console.log(`[EXPORT] No session object found`);
+        return res.status(401).json({ message: "No session found" });
+      }
+      
+      if (!userSession.user) {
+        console.log(`[EXPORT] No user in session`);
+        return res.status(401).json({ message: "No user in session" });
+      }
+      
+      if (userSession.user.role !== 'manager') {
+        console.log(`[EXPORT] User role is ${userSession.user.role}, not manager`);
+        return res.status(401).json({ message: "Not a manager" });
       }
       
       console.log(`[EXPORT] Auth passed for user: ${userSession.user.id}`);
