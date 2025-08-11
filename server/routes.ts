@@ -30,9 +30,11 @@ import { and, eq, gte, lt, sql, sum, count, desc, asc } from "drizzle-orm";
 const requireAuth = (req: any, res: any, next: any) => {
   try {
     const session = req.session as any;
+    console.log(`[DEBUG AUTH] Route: ${req.method} ${req.path}, Session exists: ${!!session}, User exists: ${!!session?.user}`);
     
     // Check if session exists and has user data
     if (!session || !session.user) {
+      console.log(`[DEBUG AUTH] Auth failed - no session or user. Session: ${!!session}, User: ${!!session?.user}`);
       return res.status(401).json({ 
         message: "Não autorizado",
         details: "Sessão inválida ou expirada" 
@@ -41,6 +43,7 @@ const requireAuth = (req: any, res: any, next: any) => {
 
     // Validate user data integrity
     if (!session.user.id || !session.user.role) {
+      console.log(`[DEBUG AUTH] Auth failed - invalid user data. ID: ${session.user.id}, Role: ${session.user.role}`);
       return res.status(401).json({ 
         message: "Não autorizado",
         details: "Dados de usuário inválidos" 
@@ -52,6 +55,7 @@ const requireAuth = (req: any, res: any, next: any) => {
     
     // Attach user to request object
     req.user = session.user;
+    console.log(`[DEBUG AUTH] Auth successful for user: ${req.user.id}, role: ${req.user.role}`);
     
     next();
   } catch (error) {
@@ -1583,7 +1587,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/manager/sessions/:sessionId/products-export", requireAuth, requireRole(["manager"]), async (req, res) => {
     try {
       const sessionId = parseInt(req.params.sessionId);
-      console.log(`[DEBUG] Products export requested for session: ${sessionId}`);
+      console.log(`[DEBUG] Products export requested for session: ${sessionId} by user: ${req.user?.id || 'Unknown'}`);
+      console.log(`[DEBUG] Session data:`, req.session);
+      console.log(`[DEBUG] User data:`, req.user);
       
       if (isNaN(sessionId)) {
         return res.status(400).json({ message: "ID da sessão inválido" });
